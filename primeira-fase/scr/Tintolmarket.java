@@ -37,12 +37,11 @@ public class Tintolmarket {
 
     public void userHandler(){
         try{
-            outStream.writeChars(user);
-            outStream.writeChars(password);
+            outStream.writeObject(user);
+            outStream.writeObject(password);
 
             Scanner sc = new Scanner(System.in);
             while(cSocket.isConnected()){
-                System.out.println("comadno");
                 String command = sc.nextLine();
                 outStream.writeChars(command);
             }

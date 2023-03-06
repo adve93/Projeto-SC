@@ -18,11 +18,13 @@ public class TintolmarketServer {
     private HashMap<String,String> userList;
     private ServerSocket sSocket;
     private PrintWriter users;
+    private ObjectOutputStream outStream;
+	private ObjectInputStream inStream;
 
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
-        System.out.println("entrou");
+
         try {
             this.users = new PrintWriter("users.txt", "UTF-8");
         } catch (FileNotFoundException e) {
@@ -57,6 +59,7 @@ public class TintolmarketServer {
                 System.out.println("A new client is connecting. Awaiting authentication.");
                 ServerThread newServerThread = new ServerThread(newClientSocket);
                 newServerThread.start();
+
             }
 
         } catch(IOException e) {
@@ -81,20 +84,24 @@ public class TintolmarketServer {
 				String passwd = null;
 
                 try {
-
+                    /* 
                     outStream.writeChars("Please introduce your username and password!");
                     outStream.writeChars("\n");
                     outStream.flush();
+                    */
 					user = (String)inStream.readObject();
 					passwd = (String)inStream.readObject();
-                    System.out.println(user);
-                    System.out.println(passwd);
+                    System.out.println("User: "  +  user);
+                    System.out.println("pass: " + passwd);
 
 				} catch (ClassNotFoundException e1) {
                     closeEverything(socket, inStream, outStream);
 					e1.printStackTrace();
 
 				}
+
+                System.out.println(user);
+                System.out.println(passwd);
 
                 //Authentication Handling
                 if(userList.size() != 0) {
