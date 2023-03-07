@@ -35,15 +35,16 @@ public class Tintolmarket {
         }
     }
 
-    public void userHandler(){
+    public void userHandler() {
         try{
             outStream.writeObject(user);
             outStream.writeObject(password);
 
             Scanner sc = new Scanner(System.in);
+            String messageFromServer;
             while(cSocket.isConnected()){
                 String command = sc.nextLine();
-                outStream.writeChars(command);
+                outStream.writeObject(command);
             }
             sc.close();
         } catch (IOException e){

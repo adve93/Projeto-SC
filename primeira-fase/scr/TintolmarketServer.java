@@ -115,12 +115,12 @@ public class TintolmarketServer {
                         if(userList.get(user) == passwd) {
 
                             System.out.println("User" + user + "logged in successful");
-                            outStream.writeChars("Successful log in");
+                            outStream.writeObject("Successful log in");
                             outStream.flush();
 
                         } else {
 
-                            outStream.writeChars("You introduced the wrong password. Disconnecting!");
+                            outStream.writeObject("You introduced the wrong password. Disconnecting!");
                             outStream.flush();
                             closeEverything(socket, inStream, outStream);
                             return;
@@ -131,7 +131,7 @@ public class TintolmarketServer {
 
                         userList.put(user, passwd);
                         System.out.println("New user " + user + " created");
-                        outStream.writeChars("Successful log in");
+                        outStream.writeObject("Successful log in");
                         outStream.flush();
 
                     }
@@ -140,7 +140,7 @@ public class TintolmarketServer {
 
                     userList.put(user, passwd);
                     System.out.println("New user " + user + " created");
-                    outStream.writeChars("Successful log in");
+                    outStream.writeObject("Successful log in");
                     outStream.flush();
                     
                 }
