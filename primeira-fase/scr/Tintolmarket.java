@@ -35,21 +35,54 @@ public class Tintolmarket {
         }
     }
 
-    public void userHandler() {
+    public void send() {
         try{
+
             outStream.writeObject(user);
             outStream.writeObject(password);
+            outStream.flush();
 
             Scanner sc = new Scanner(System.in);
-            String messageFromServer;
             while(cSocket.isConnected()){
                 String command = sc.nextLine();
                 outStream.writeObject(command);
+                outStream.flush();
             }
             sc.close();
+
         } catch (IOException e){
             closeClient(cSocket, outStream, inStream);
         }
+    }
+
+    public void listen() {
+        new Thread(new Runnable() {
+            @ Override
+
+            public void run() {
+                try{
+
+                    String messageFromServer;
+                    while(cSocket.isConnected()) {
+                    
+                    try {
+
+                        messageFromServer = (String)inStream.readObject();
+                        System.out.println(messageFromServer);
+
+                    } catch (ClassNotFoundException e1) {
+                        closeClient(cSocket, outStream, inStream);
+                        e1.printStackTrace();
+                    }
+
+
+                    }
+                } catch (IOException e){
+                    closeClient(cSocket, outStream, inStream);
+                }
+            }
+
+        }).start();
     }
 
     public static void main(String[] args) throws UnknownHostException, IOException {
@@ -59,7 +92,8 @@ public class Tintolmarket {
         Socket cSocket = new Socket(ip, 12345);
         Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
         System.out.println("Connecting...");
-        tintol.userHandler();
+        tintol.listen();
+        tintol.send();
     }
 
 
