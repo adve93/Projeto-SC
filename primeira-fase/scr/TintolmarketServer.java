@@ -10,28 +10,38 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.Buffer;
 import java.util.HashMap;
+import java.util.Scanner;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 
 public class TintolmarketServer {
 
     private HashMap<String,String> userList;
     private ServerSocket sSocket;
-    private PrintWriter users;
+    //private File users;
+    //private FileWriter writer;
+    //private PrintWriter pw;
     private ObjectOutputStream outStream;
 	private ObjectInputStream inStream;
 
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
-
+        //this.users = new File("out.txt");
+        /* 
         try {
-            this.users = new PrintWriter("users.txt", "UTF-8");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
+            this.writer = new FileWriter(users);
+        } catch (IOException e) {
             e.printStackTrace();
         }
+        this.pw = new PrintWriter(writer);
+        try {
+            users.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }  
+        */    
     }
 
     public static void main(String[] args) {
@@ -82,17 +92,11 @@ public class TintolmarketServer {
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
                 String user = null;
 				String passwd = null;
+                //Scanner sc = new Scanner(users);
 
                 try {
-                    /* 
-                    outStream.writeChars("Please introduce your username and password!");
-                    outStream.writeChars("\n");
-                    outStream.flush();
-                    */
 					user = (String)inStream.readObject();
 					passwd = (String)inStream.readObject();
-                    System.out.println("User: "  +  user);
-                    System.out.println("pass: " + passwd);
 
 				} catch (ClassNotFoundException e1) {
                     closeEverything(socket, inStream, outStream);
@@ -126,7 +130,7 @@ public class TintolmarketServer {
                     } else {
 
                         userList.put(user, passwd);
-                        System.out.println("New user" + user + "created");
+                        System.out.println("New user " + user + " created");
                         outStream.writeChars("Successful log in");
                         outStream.flush();
 
@@ -135,7 +139,7 @@ public class TintolmarketServer {
                 } else {
 
                     userList.put(user, passwd);
-                    System.out.println("New user" + user + "created");
+                    System.out.println("New user " + user + " created");
                     outStream.writeChars("Successful log in");
                     outStream.flush();
                     

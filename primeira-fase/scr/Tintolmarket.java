@@ -49,7 +49,6 @@ public class Tintolmarket {
         } catch (IOException e){
             closeClient(cSocket, outStream, inStream);
         }
-
     }
 
     public static void main(String[] args) throws UnknownHostException, IOException {
