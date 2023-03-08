@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream.PutField;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.Buffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.io.File;
@@ -24,10 +25,12 @@ public class TintolmarketServer {
     //private PrintWriter pw;
     private ObjectOutputStream outStream;
 	private ObjectInputStream inStream;
+    private ArrayList<TintolmarketWine> wineList;
 
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
+        this.wineList = new ArrayList<>();
         //this.users = new File("out.txt");
         /* 
         try {
