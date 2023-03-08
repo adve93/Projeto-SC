@@ -44,6 +44,7 @@ public class Tintolmarket {
 
             Scanner sc = new Scanner(System.in);
             while(cSocket.isConnected()){
+                printMenu();
                 String command = sc.nextLine();
                 outStream.writeObject(command);
                 outStream.flush();
@@ -113,5 +114,11 @@ public class Tintolmarket {
         } catch(IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void printMenu(){
+        System.out.println("Choose an action to perform: ");
+        System.out.println("add; sell; view; buy; wallet; classify; talk; read");
+        System.out.println("All actions can be called by using the first letter of the name.");
     }
 }

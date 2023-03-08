@@ -1,12 +1,14 @@
 public class TintolmarketWine {
     
+    private String wineName;
     private String seller; //String com o username do vendedor
     private String path; //Caminho para a imagem associada ao vinho
     private int quantity; //Numero de vinhos em stock
     private float value; //Preço do vinho
     private int classification; //Classificação média do vinho
 
-    public TintolmarketWine(String seller, String path){
+    public TintolmarketWine(String wineName, String seller, String path){
+        this.wineName = wineName;
         this.seller = seller;
         this.path = path;
         this.classification = -1; //classificaçao começa a -1 quando ninguem classificou o vinho ainda
@@ -28,6 +30,10 @@ public class TintolmarketWine {
         }
     } 
 
+    public String getWinename(){
+        return this.wineName;
+    }
+
     public String getSeller() {
         return this.seller;
     }
@@ -46,6 +52,24 @@ public class TintolmarketWine {
 
     public int getClassification() {
         return this.classification;
+    }
+
+
+    //Metodo equals do object wine, retirado de "geeksforgeeks.org/overriding-equals-method-in-java/"
+    @Override
+    public boolean equals(Object wine){
+
+        if(wine == this){
+            return true;
+        }
+
+        if(!(wine instanceof TintolmarketWine)){
+            return false;
+        }
+
+        TintolmarketWine c = (TintolmarketWine) wine;
+
+        return c.getWinename().equals(getWinename()) && c.getPath().equals(getPath());
     }
 
 }

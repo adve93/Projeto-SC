@@ -117,7 +117,7 @@ public class TintolmarketServer {
 
                         if(userList.get(user) == passwd) {
 
-                            System.out.println("User" + user + "logged in successful");
+                            System.out.println("User " + user + " logged in successful");
                             outStream.writeObject("Successful log in");
                             outStream.flush();
 
@@ -187,6 +187,27 @@ public class TintolmarketServer {
                 e.printStackTrace();
             }
         }
+    }
+
+
+    public void add(String wineName, String user, String ImgPath){
+        TintolmarketWine wine = new TintolmarketWine(wineName, user, ImgPath);
+        if(!wineList.contains(wine)){
+            wineList.add(wine);
+        } else {
+            System.out.println("This wine already exists in stock!");
+        }
+    }
+
+    public void sell(String wine, float value, int quantity){
+        for(int i = 0; i <= wineList.size(); i++){
+            if((wineList.get(i)).getWinename().equals(wine)){
+                wineList.get(i).setQuantity(quantity);
+                wineList.get(i).setValue(value);
+                return;
+            }
+        }
+        System.out.println("This wine does not exist!");
     }
 
 }
