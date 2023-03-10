@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 public class TintolmarketWine {
     
     private String wineName;
@@ -5,13 +7,15 @@ public class TintolmarketWine {
     private String path; //Caminho para a imagem associada ao vinho
     private int quantity; //Numero de vinhos em stock
     private float value; //Preço do vinho
-    private int classification; //Classificação média do vinho
+    private ArrayList<Integer> classifications;
 
     public TintolmarketWine(String wineName, String seller, String path){
         this.wineName = wineName;
         this.seller = seller;
         this.path = path;
-        this.classification = -1; //classificaçao começa a -1 quando ninguem classificou o vinho ainda
+        this.quantity = 0;
+        this.value = 0;
+        this.classifications = new ArrayList<>();
     }
 
     public void setQuantity(int quant) {
@@ -22,12 +26,8 @@ public class TintolmarketWine {
         this.value = value;
     } 
 
-    public void setClassification(int classification) {
-        if(this.classification == -1) {
-            this.classification = classification; //Caso não exista nenhuma classificação, coloca o valor diretamente em classifcation
-        } else {
-            this.classification = (this.classification + classification)/2;//Caso já exista uma classificação, faz a média da classificação atual com a nova classificação adicionada
-        }
+    public void giveClassification(int classification) {
+        classifications.add(classification);
     } 
 
     public String getWinename(){
@@ -51,7 +51,11 @@ public class TintolmarketWine {
     }
 
     public int getClassification() {
-        return this.classification;
+        int sum = 0;
+        for(Integer num : this.classifications) {
+            sum += num;
+        }
+        return sum / (this.classifications.size());
     }
 
 
@@ -69,7 +73,7 @@ public class TintolmarketWine {
 
         TintolmarketWine c = (TintolmarketWine) wine;
 
-        return c.getWinename().equals(getWinename()) && c.getPath().equals(getPath());
+        return c.getWinename().equals(getWinename());
     }
 
 }

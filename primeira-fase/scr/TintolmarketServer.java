@@ -281,26 +281,38 @@ public class TintolmarketServer {
                 e.printStackTrace();
             }
         }
-    }
 
-
-    public void add(String wineName, String user, String ImgPath){
-        TintolmarketWine wine = new TintolmarketWine(wineName, user, ImgPath);
-        if(!wineList.contains(wine)){
-            wineList.add(wine);
-        } else {
-            System.out.println("This wine already exists in stock!"); //Passar para o user não dar print out
-        }
-    }
-
-    public void sell(String wine, float value, int quantity){
-        for(int i = 0; i <= wineList.size(); i++){
-            if((wineList.get(i)).getWinename().equals(wine)){
-                wineList.get(i).setQuantity(quantity);
-                wineList.get(i).setValue(value);
-                return;
+        public void add(String wineName, String user, String ImgPath){
+            TintolmarketWine wine = new TintolmarketWine(wineName, user, ImgPath);
+            if(!wineList.contains(wine)){
+                wineList.add(wine);
+            } else {
+                try {
+                    outStream.writeObject("This wine already exists");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
-        System.out.println("This wine does not exist!"); //Passar para o user não dar print out
-    }
+
+        public void sell(String wine, float value, int quantity){
+            for(int i = 0; i <= wineList.size(); i++){
+                if((wineList.get(i)).getWinename().equals(wine)){
+                    wineList.get(i).setQuantity(quantity);
+                    wineList.get(i).setValue(value);
+                    return;
+                }
+            }
+            try {
+                outStream.writeObject("This wine does not exist");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    } //FIM DE SERVER THREAD
+
+
+    
+
+    
 }
