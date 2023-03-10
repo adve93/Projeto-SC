@@ -1,20 +1,18 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.io.ObjectOutputStream.PutField;
+//import java.io.PrintWriter;
+//import java.io.UnsupportedEncodingException;
+//import java.io.ObjectOutputStream.PutField;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.Buffer;
+//import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Scanner;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
+//import java.util.Scanner;
+//import java.io.File;
+//import java.io.FileNotFoundException;
+//import java.io.FileWriter;
 
 public class TintolmarketServer {
 
@@ -23,14 +21,14 @@ public class TintolmarketServer {
     //private File users;
     //private FileWriter writer;
     //private PrintWriter pw;
-    private ObjectOutputStream outStream;
-	private ObjectInputStream inStream;
     private ArrayList<TintolmarketWine> wineList;
+    private ArrayList<String> inbox;
 
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
         this.wineList = new ArrayList<>();
+        this.inbox = new ArrayList<>();
         //this.users = new File("out.txt");
         /* 
         try {
@@ -83,16 +81,27 @@ public class TintolmarketServer {
 
     class ServerThread extends Thread {
         private Socket socket = null;
+        private String username; //Identificador da thread.
+        private ObjectOutputStream outStream; //outStream e inStream passados para variaveis globais de serverThread para podermos criar metodos como read e talk
+        private ObjectInputStream inStream;
 
         ServerThread(Socket newClientSocket) {
 			this.socket = newClientSocket;
+            this.username = null;
+            try {
+
+                outStream = new ObjectOutputStream(socket.getOutputStream());
+                inStream = new ObjectInputStream(socket.getInputStream());
+
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
+
 		}
 
         public void run() {
             try {
 
-                ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
-				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
                 String user = null;
 				String passwd = null;
                 //Scanner sc = new Scanner(users);
@@ -107,16 +116,14 @@ public class TintolmarketServer {
 
 				}
 
-                System.out.println(user);
-                System.out.println(passwd);
-
                 //Authentication Handling
                 if(userList.size() != 0) {
                     
                     if(userList.containsKey(user)) {
 
-                        if(userList.get(user) == passwd) {
+                        if(userList.get(user).equals(passwd)) {
 
+                            username = user;
                             System.out.println("User " + user + " logged in successful");
                             outStream.writeObject("Successful log in");
                             outStream.flush();
@@ -126,6 +133,7 @@ public class TintolmarketServer {
                             outStream.writeObject("You introduced the wrong password. Disconnecting!");
                             outStream.flush();
                             closeEverything(socket, inStream, outStream);
+                            System.out.println("Client introduced wrong credentials, has been disconnected.");
                             return;
 
                         }
@@ -133,6 +141,7 @@ public class TintolmarketServer {
                     } else {
 
                         userList.put(user, passwd);
+                        username = user;
                         System.out.println("New user " + user + " created");
                         outStream.writeObject("Successful log in");
                         outStream.flush();
@@ -142,6 +151,7 @@ public class TintolmarketServer {
                 } else {
 
                     userList.put(user, passwd);
+                    username = user;
                     System.out.println("New user " + user + " created");
                     outStream.writeObject("Successful log in");
                     outStream.flush();
@@ -155,7 +165,37 @@ public class TintolmarketServer {
                     try {
 
                         messageFromClient = (String)inStream.readObject();
-                        System.out.println(messageFromClient);
+                        String[] splitMessage = messageFromClient.split(" ", 0); //Partir a mensagem do utilizador. Em splitMessage[0] estara sempre o commando a executar
+
+                        switch(splitMessage[0]) {
+
+                            case "read":
+                                read(this.username);
+                                System.out.println(username + " has been sent his messages");
+                                break;
+
+                            case "talk":
+                                talk(splitMessage[1], this.username, splitMessage[2]);
+                                System.out.println(username + " has sent a messages to " + splitMessage[1]);
+                                break;
+
+                            case "r":
+                                read(this.username);
+                                System.out.println(username + " has been sent his messages");
+                                break;
+
+                            case "t":
+                                talk(splitMessage[1], this.username, splitMessage[2]);
+                                System.out.println(username + " has sent a messages to " + splitMessage[1]);
+                                break;
+
+                            default:
+                                outStream.writeObject("Please introduce a valid command");
+                                outStream.flush();
+
+                        }
+
+
 
                     } catch (ClassNotFoundException e1) {
                         closeEverything(socket, inStream, outStream);
@@ -187,6 +227,60 @@ public class TintolmarketServer {
                 e.printStackTrace();
             }
         }
+
+        public void read(String username) {
+            boolean hadMessage = false;
+            ArrayList<String> toDelete = new ArrayList<>();
+
+            for(String message : inbox) {
+
+                String[] toSend = message.split(";", 2);
+
+                if(toSend[0].equals(this.username)) {
+                    hadMessage = true;
+                    toDelete.add(message);
+                    try {
+
+                        outStream.writeObject(toSend[1]);
+                        outStream.flush();
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                                        
+                
+            }
+
+            for(String delete : toDelete) {
+                 inbox.remove(delete);
+            }
+
+            if(!hadMessage) {
+
+                try {
+
+                    outStream.writeObject("You had no messages in the server inbox");
+                    outStream.flush();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+        }
+
+        public void talk(String reciever, String sender, String message) {
+
+            inbox.add(reciever + ";" + sender + ": " + message);
+
+            try {
+                outStream.writeObject("Message succesufuly delivered");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 
@@ -195,7 +289,7 @@ public class TintolmarketServer {
         if(!wineList.contains(wine)){
             wineList.add(wine);
         } else {
-            System.out.println("This wine already exists in stock!");
+            System.out.println("This wine already exists in stock!"); //Passar para o user não dar print out
         }
     }
 
@@ -207,7 +301,6 @@ public class TintolmarketServer {
                 return;
             }
         }
-        System.out.println("This wine does not exist!");
+        System.out.println("This wine does not exist!"); //Passar para o user não dar print out
     }
-
 }

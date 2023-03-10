@@ -1,17 +1,13 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.ObjectOutputStream.PutField;
-import java.net.ServerSocket;
+//import java.io.ObjectOutputStream.PutField;
+//import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.nio.Buffer;
-import java.util.HashMap;
 import java.util.Scanner;
 
-import javax.sound.sampled.FloatControl;
+//import javax.sound.sampled.FloatControl;
 
 public class Tintolmarket {
 
@@ -20,7 +16,7 @@ public class Tintolmarket {
 	private ObjectInputStream inStream;
     private String user;
     private String password;
-    private float saldo;
+    //private float saldo; Tirar comment quando se for usar
 
     public Tintolmarket(Socket cSocket, String user, String password){
         try {
@@ -44,7 +40,6 @@ public class Tintolmarket {
 
             Scanner sc = new Scanner(System.in);
             while(cSocket.isConnected()){
-                printMenu();
                 String command = sc.nextLine();
                 outStream.writeObject(command);
                 outStream.flush();
@@ -66,15 +61,15 @@ public class Tintolmarket {
                     String messageFromServer;
                     while(cSocket.isConnected()) {
                     
-                    try {
+                        try {
 
-                        messageFromServer = (String)inStream.readObject();
-                        System.out.println(messageFromServer);
+                            messageFromServer = (String)inStream.readObject();
+                            System.out.println(messageFromServer);
 
-                    } catch (ClassNotFoundException e1) {
-                        closeClient(cSocket, outStream, inStream);
-                        e1.printStackTrace();
-                    }
+                        } catch (ClassNotFoundException e1) {
+                            closeClient(cSocket, outStream, inStream);
+                            e1.printStackTrace();
+                        }
 
 
                     }
@@ -93,6 +88,7 @@ public class Tintolmarket {
         Socket cSocket = new Socket(ip, 12345);
         Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
         System.out.println("Connecting...");
+        tintol.printMenu();
         tintol.listen();
         tintol.send();
     }
