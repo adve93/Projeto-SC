@@ -282,8 +282,8 @@ public class TintolmarketServer {
             }
         }
 
-        public void add(String wineName, String user, String ImgPath){
-            TintolmarketWine wine = new TintolmarketWine(wineName, user, ImgPath);
+        public void add(String wineName, String ImgPath){
+            TintolmarketWine wine = new TintolmarketWine(wineName, ImgPath);
             if(!wineList.contains(wine)){
                 wineList.add(wine);
             } else {
@@ -295,11 +295,11 @@ public class TintolmarketServer {
             }
         }
 
-        public void sell(String wine, float value, int quantity){
+        public void sell(String wine, int value, int quantity){
             for(int i = 0; i <= wineList.size(); i++){
                 if((wineList.get(i)).getWinename().equals(wine)){
-                    wineList.get(i).setQuantity(quantity);
-                    wineList.get(i).setValue(value);
+                    wineList.get(i).setQuantity(username, quantity);
+                    wineList.get(i).setValue(username, value);
                     return;
                 }
             }
