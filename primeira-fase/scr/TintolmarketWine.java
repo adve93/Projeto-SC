@@ -67,7 +67,11 @@ public class TintolmarketWine {
         for(Integer num : this.classifications) {
             sum += num;
         }
-        return sum / (this.classifications.size());
+        if (this.classifications.size() > 0){
+            return sum / (this.classifications.size());
+        }
+        return 0;
+        
     }
 
 

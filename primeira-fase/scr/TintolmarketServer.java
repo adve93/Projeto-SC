@@ -169,6 +169,36 @@ public class TintolmarketServer {
 
                         switch(splitMessage[0]) {
 
+                            case "add":
+                                add(splitMessage[1], splitMessage[2]);
+                                System.out.println(username + " has added a new wine to the list");
+                                break;
+
+                            case "a":
+                                add(splitMessage[1], splitMessage[2]);
+                                System.out.println(username + " has added a new wine to the list");
+                                break;
+
+                            case "sell":
+                                sell(splitMessage[1], Integer.valueOf(splitMessage[2]),  Integer.valueOf(splitMessage[3]));
+                                System.out.println(username + " has put " + splitMessage[1] + " on sale");
+                                break;
+
+                            case "s":
+                                sell(splitMessage[1], Integer.valueOf(splitMessage[2]),  Integer.valueOf(splitMessage[3]));
+                                System.out.println(username + " has put " + splitMessage[1] + " on sale");
+                                break;
+
+                            case "view":
+                                view(splitMessage[1]);
+                                System.out.println(username + " has requested to view wine " + splitMessage[1]);
+                                break;
+
+                            case "v":
+                                view(splitMessage[1]);
+                                System.out.println(username + " has requested to view wine " + splitMessage[1]);
+                                break;
+
                             case "read":
                                 read(this.username);
                                 System.out.println(username + " has been sent his messages");
@@ -308,6 +338,33 @@ public class TintolmarketServer {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+
+        public void view(String wine){
+            try {
+                outStream.writeObject("Wine name: " + wine);
+                outStream.writeObject("Wine image: " + wineList.get(getIndexOfWine(wine)).getPath());
+                outStream.writeObject("Wine classification: " + wineList.get(getIndexOfWine(wine)).getClassification());
+                if(wineList.get(getIndexOfWine(wine)).getListofSellers().size() > 0){
+                    for(int i = 0; i < wineList.get(getIndexOfWine(wine)).getListofSellers().size(); i++){
+                        String seller = wineList.get(getIndexOfWine(wine)).getListofSellers().get(i);
+                        outStream.writeObject("Seller " + i +": " +  seller);
+                        outStream.writeObject("Quantity: " + wineList.get(getIndexOfWine(wine)).getQuantitySoldBySeller(seller));
+                        outStream.writeObject("Value: " + wineList.get(getIndexOfWine(wine)).getValueOfWineSoldBySeller(seller));
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private int getIndexOfWine(String wine){
+            for(int i = 0; i <= wineList.size(); i++){
+                if((wineList.get(i)).getWinename().equals(wine)){
+                    return i;
+                }
+            }
+            return -1;
         }
     } //FIM DE SERVER THREAD
 
