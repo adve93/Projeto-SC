@@ -168,7 +168,6 @@ public class TintolmarketServer {
                         String[] splitMessage = messageFromClient.split(" ", 0); //Partir a mensagem do utilizador. Em splitMessage[0] estara sempre o commando a executar
 
                         switch(splitMessage[0]) {
-
                             case "add":
                             case "a":
                                 add(splitMessage[1], splitMessage[2]);
