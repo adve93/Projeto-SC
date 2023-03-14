@@ -358,6 +358,38 @@ public class TintolmarketServer {
             }
         }
 
+
+        public void buy(String wine, String seller, int quantity){
+            for(int i = 0; i <= wineList.size(); i++){
+                if((wineList.get(i)).getWinename().equals(wine)){
+                    if(wineList.get(i).getListofSellers().contains(seller)){
+                        for(int j = 0; j <= wineList.get(i).getListofSellers().size(); j++){
+                            if(wineList.get(i).getListofSellers().get(j).equals(seller)){
+                                if(quantity <= wineList.get(i).getQuantitySoldBySeller(seller)){
+                                    wineList.get(i).setQuantity(seller, wineList.get(i).getQuantitySoldBySeller(seller) - quantity);
+                                    return;
+                                } else try {
+                                    outStream.writeObject("This seller does not have that much quantity");
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    }else try {
+                        outStream.writeObject("This seller does not exist");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } 
+            try {
+                outStream.writeObject("This wine does not exist");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
         private int getIndexOfWine(String wine){
             for(int i = 0; i <= wineList.size(); i++){
                 if((wineList.get(i)).getWinename().equals(wine)){
