@@ -1,41 +1,36 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class TintolmarketWine {
     
     private String wineName;
-    private ArrayList<String> sellers; //String com o username do vendedor
     private String path; //Caminho para a imagem associada ao vinho
-    private ArrayList<Integer> quantitys; //Numero de vinhos em stock
-    private ArrayList<Integer> values; //Preço do vinho
     private ArrayList<Integer> classifications;
+    private HashMap<String,TintolmarketValues> sellersList;
+
 
     //Listas de Sellers, quantitys e values têm de obrigatoriamente ter sempre o mesmo tamanho
 
 
     public TintolmarketWine(String wineName, String path){
         this.wineName = wineName;
-        this.sellers = new ArrayList<>();
         this.path = path;
-        this.quantitys = new ArrayList<>();
-        this.values = new ArrayList<>();
         this.classifications = new ArrayList<>();
+        this.sellersList = new HashMap<String,TintolmarketValues>();
     }
 
-    public void setQuantity(String user, int quant) {
-        if(!sellers.contains(user)){
-            addSeller(user);
+    public void setQuantity(String selller, int quant) {
+        if(!sellersList.containsKey(seller)){
+            addSeller(seller);
         }
-
-        this.quantitys.add(sellers.indexOf(user), quant);
-
+        this.sellersList.get(seller).setQuantity(quant);
     } 
 
-    public void setValue(String user, int value) {
-        if(!sellers.contains(user)){
-            addSeller(user);
+    public void setValue(String seller, int value) {
+        if(!sellersList.containsKey(seller)){
+            addSeller(seller);
         }
-
-        this.values.add(sellers.indexOf(user), value);
+        this.sellersList.get(seller).setValue(value);
     } 
 
     public void giveClassification(int classification) {
@@ -46,20 +41,20 @@ public class TintolmarketWine {
         return this.wineName;
     }
 
-    public ArrayList<String> getListofSellers() {
-        return this.sellers;
+    public HashMap<String,TintolmarketValues> getListofSellers() {
+        return this.sellersList;
     }
 
     public String getPath() {
         return this.path;
     }
 
-    public int getQuantitySoldBySeller(String user) {
-        return this.quantitys.get(sellers.indexOf(user));
+    public int getQuantitySoldBySeller(String seller) {
+        return this.sellersList.get(seller).getQuantity();
     }
 
-    public float getValueOfWineSoldBySeller(String user) {
-        return this.values.get(sellers.indexOf(user));
+    public int getValueOfWineSoldBySeller(String seller) {
+        return this.sellersList.get(seller).getValue();
     }
 
     public int getClassification() {
@@ -76,9 +71,7 @@ public class TintolmarketWine {
 
 
     private void addSeller(String user){
-        sellers.add(user);
-        quantitys.add(-1);
-        values.add(-1);
+        sellersList.put(user, new TintolmarketValues(0,0));
     }
 
     //Metodo equals do object wine, retirado de "geeksforgeeks.org/overriding-equals-method-in-java/"

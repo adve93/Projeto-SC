@@ -28,21 +28,7 @@ public class TintolmarketServer {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
         this.wineList = new ArrayList<>();
-        this.inbox = new ArrayList<>();
-        //this.users = new File("out.txt");
-        /* 
-        try {
-            this.writer = new FileWriter(users);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        this.pw = new PrintWriter(writer);
-        try {
-            users.createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }  
-        */    
+        this.inbox = new ArrayList<>();  
     }
 
     public static void main(String[] args) {
