@@ -7,6 +7,7 @@ public class TintolmarketWine {
     private String path; //Caminho para a imagem associada ao vinho
     private ArrayList<Integer> classifications;
     private HashMap<String,TintolmarketValues> sellersList;
+    private ArrayList<String> hasClassified;
 
 
     //Listas de Sellers, quantitys e values têm de obrigatoriamente ter sempre o mesmo tamanho
@@ -15,6 +16,7 @@ public class TintolmarketWine {
     public TintolmarketWine(String wineName, String path){
         this.wineName = wineName;
         this.path = path;
+        this.hasClassified = new ArrayList<>();
         this.classifications = new ArrayList<>();
         this.sellersList = new HashMap<String,TintolmarketValues>();
     }
@@ -33,8 +35,14 @@ public class TintolmarketWine {
         this.sellersList.get(seller).setValue(value);
     } 
 
-    public void giveClassification(int classification) {
-        classifications.add(classification);
+    public int giveClassification(int classification, String username) { //Return 1 when wine has been sucessfully classified or -1 when the user already classified the wine previously.
+        if(hasClassified.contains(username)) {
+            return -1; 
+        } else {
+            classifications.add(classification);
+            hasClassified.add(username);
+            return 1;
+        }         
     } 
 
     public String getWinename(){

@@ -471,17 +471,26 @@ public class TintolmarketServer {
 
         
         public void classify(String wine, int stars){
+            int res = 0;
             if(wineExists(wine)){
 
-                wineList.get(getIndexOfWine(wine)).giveClassification(stars);
+                res = wineList.get(getIndexOfWine(wine)).giveClassification(stars, this.username);
                 try {
+                    if(res == 1) {
+                        
 
-                    outStream.writeObject(wine + " classified with " + stars + " stars.");
-                    outStream.flush();
+                            outStream.writeObject(wine + " classified with " + stars + " stars.");
+                            outStream.flush();
+                  
+                    } else {
 
+                            outStream.writeObject(wine + " has already been classified before. You cannot classify the sanme wine twice");
+                            outStream.flush();
+          
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
-                }
+                }  
                 
             } else {
                 
