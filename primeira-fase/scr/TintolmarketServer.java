@@ -160,52 +160,108 @@ public class TintolmarketServer {
                         switch(splitMessage[0]) {
                             case "add":
                             case "a":
-                                add(splitMessage[1], splitMessage[2]);
-                                System.out.println(username + " has added a new wine to the list");
-                                break;
+                                if(splitMessage.length == 3) {
+                                    add(splitMessage[1], splitMessage[2]);
+                                    System.out.println(username + " has added a new wine to the list");
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("add failed due to wrong number of parameters. Be sure to use add 'wine' 'image'.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }
+                                break;          
 
                             case "sell":
                             case "s":
-                                sell(splitMessage[1], Integer.valueOf(splitMessage[2]),  Integer.valueOf(splitMessage[3]));
-                                System.out.println(username + " has put " + splitMessage[1] + " on sale");
-                                break;
-
-                            
+                                if(splitMessage.length == 4) {
+                                    sell(splitMessage[1], Integer.valueOf(splitMessage[2]),  Integer.valueOf(splitMessage[3]));
+                                    System.out.println(username + " has put " + splitMessage[1] + " on sale");
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("sell failed due to wrong number of parameters. Be sure to use sell 'wine' 'value' 'quantity'.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }
+                                break;   
 
                             case "view":
                             case "v":
-                                view(splitMessage[1]);
-                                System.out.println(username + " has requested to view wine " + splitMessage[1]);
-                                break;
-
-                            case "read":
-                            case "r":
-                                read(this.username);
-                                System.out.println(username + " has been sent his messages");
-                                break;
-
-                            case "talk":
-                            case "t":
-                                talk(splitMessage[1], this.username, splitMessage[2]);
-                                System.out.println(username + " has sent a messages to " + splitMessage[1]);
+                                if(splitMessage.length == 2) {
+                                    view(splitMessage[1]);
+                                    System.out.println(username + " has requested to view wine " + splitMessage[1]);
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("view failed due to wrong number of parameters. Be sure to use view 'wine'.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }                              
                                 break;
 
                             case "buy":
                             case "b":
-                                buy(splitMessage[1], splitMessage[2], Integer.valueOf(splitMessage[3]));
-                                System.out.println(username + " has bought " + splitMessage[1] + " from " + splitMessage[2]);
+                                if(splitMessage.length == 4) {
+                                    buy(splitMessage[1], splitMessage[2], Integer.valueOf(splitMessage[3]));
+                                    System.out.println(username + " has bought " + splitMessage[1] + " from " + splitMessage[2]);
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("buy failed due to wrong number of parameters. Be sure to use buy 'wine' 'seller' 'quantity'.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }
                                 break;
 
                             case "wallet":
                             case "w":
-                                outStream.writeObject(Integer.toString(this.saldo));
-                                outStream.flush();
+                                if(splitMessage.length == 1) {
+                                    outStream.writeObject(Integer.toString(this.saldo));
+                                    outStream.flush();
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("wallet failed due to wrong number of parameters. Be sure to use wallet.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }  
                                 break;
 
                             case "classify":
                             case "c":
-                                classify(splitMessage[1], Integer.valueOf(splitMessage[2]));
+                                if(splitMessage.length == 3) {
+                                    classify(splitMessage[1], Integer.valueOf(splitMessage[2]));
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("classify failed due to wrong number of parameters. Be sure to use classify 'wine' 'stars'.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }
                                 break;
+
+                            case "talk":
+                            case "t":
+                                if(splitMessage.length == 3) {
+                                    talk(splitMessage[1], this.username, splitMessage[2]);
+                                    System.out.println(username + " has sent a messages to " + splitMessage[1]);
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("talk failed due to wrong number of parameters. Be sure to use talk 'user' 'message'.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }
+                                break;
+
+                            case "read":
+                            case "r":
+                                if(splitMessage.length == 1) {
+                                    read(this.username);
+                                    System.out.println(username + " has been sent his messages");
+                                } else {
+                                    System.out.println(username + " introduced the wrong number of parameters when calling a function.");
+                                    outStream.writeObject("read failed due to wrong number of parameters. Be sure to use read.");
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                }
+                                break;
+
+                            
 
                             default:
                                 outStream.writeObject("Please introduce a valid command");
