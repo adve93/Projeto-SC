@@ -290,18 +290,6 @@ public class TintolmarketServer {
         }
 
 
-        /*
-         * for(user : )
-         * 
-         * 
-         * 
-         * 
-         * 
-         */
-
-
-
-
         public void talk(String reciever, String sender, String message) {
 
             inbox.add(reciever + ";" + sender + ": " + message);
@@ -343,17 +331,30 @@ public class TintolmarketServer {
 
         public void view(String wine){
             try {
-                outStream.writeObject("Wine name: " + wine);
-                outStream.writeObject("Wine image: " + wineList.get(getIndexOfWine(wine)).getPath());
-                outStream.writeObject("Wine classification: " + wineList.get(getIndexOfWine(wine)).getClassification());
-                if(wineList.get(getIndexOfWine(wine)).getListofSellers().size() > 0){
-                    for(int i = 0; i < wineList.get(getIndexOfWine(wine)).getListofSellers().size(); i++){
-                        String seller = wineList.get(getIndexOfWine(wine)).getListofSellers().get(i);
-                        outStream.writeObject("Seller " + i +": " +  seller);
-                        outStream.writeObject("Quantity: " + wineList.get(getIndexOfWine(wine)).getQuantitySoldBySeller(seller));
-                        outStream.writeObject("Value: " + wineList.get(getIndexOfWine(wine)).getValueOfWineSoldBySeller(seller));
+
+                if(wineExists(wine)) {
+
+                    outStream.writeObject("Wine name: " + wine);
+                    outStream.writeObject("Wine image: " + wineList.get(getIndexOfWine(wine)).getPath());
+                    outStream.writeObject("Wine classification: " + wineList.get(getIndexOfWine(wine)).getClassification());
+
+                    if(wineList.get(getIndexOfWine(wine)).getListofSellers().size() > 0){
+                        for(int i = 0; i < wineList.get(getIndexOfWine(wine)).getListofSellers().size(); i++){
+
+                            String seller = wineList.get(getIndexOfWine(wine)).getListofSellers().get(i);
+                            outStream.writeObject("Seller " + i +": " +  seller);
+                            outStream.writeObject("Quantity: " + wineList.get(getIndexOfWine(wine)).getQuantitySoldBySeller(seller));
+                            outStream.writeObject("Value: " + wineList.get(getIndexOfWine(wine)).getValueOfWineSoldBySeller(seller));
+
+                        }
                     }
+                } else {
+
+                    outStream.writeObject("The wine you wanted to view doesn't exist");
+                    outStream.flush();
+
                 }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
