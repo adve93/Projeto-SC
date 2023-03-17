@@ -347,7 +347,6 @@ public class TintolmarketServer {
 
 
         public void talk(String reciever, String sender, String message) {
-
             inbox.add(reciever + ";" + sender + ": " + message);
 
             try {
@@ -359,11 +358,26 @@ public class TintolmarketServer {
 
         public void add(String wineName, String ImgPath){
             TintolmarketWine wine = new TintolmarketWine(wineName, ImgPath);
+
             if(!wineList.contains(wine)){
-                wineList.add(wine);
-            } else {
+
                 try {
+
+                    wineList.add(wine);
+                    outStream.writeObject("Added " + wineName + " to the wine list!");
+                    outStream.flush();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                
+            } else {
+
+                try {
+
                     outStream.writeObject("This wine already exists");
+                    outStream.flush();
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -373,13 +387,17 @@ public class TintolmarketServer {
         public void sell(String wine, int value, int quantity){
             for(int i = 0; i <= wineList.size(); i++){
                 if((wineList.get(i)).getWinename().equals(wine)){
+
                     wineList.get(i).setQuantity(username, quantity);
                     wineList.get(i).setValue(username, value);
                     return;
                 }
             }
             try {
+
                 outStream.writeObject("This wine does not exist");
+                outStream.flush();
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -392,7 +410,10 @@ public class TintolmarketServer {
 
                     outStream.writeObject("Wine name: " + wine);
                     outStream.writeObject("Wine image: " + wineList.get(getIndexOfWine(wine)).getPath());
-                    outStream.writeObject("Wine classification: " + wineList.get(getIndexOfWine(wine)).getClassification());
+                    int stars = wineList.get(getIndexOfWine(wine)).getClassification();
+                    if(stars != 0) {
+                        outStream.writeObject("Wine classification: " + wineList.get(getIndexOfWine(wine)).getClassification());
+                    }
 
                     if(wineList.get(getIndexOfWine(wine)).getListofSellers().size() > 0){
                         for(int i = 0; i < wineList.get(getIndexOfWine(wine)).getListofSellers().size(); i++){
@@ -444,7 +465,6 @@ public class TintolmarketServer {
                     outStream.flush();
                 }
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
@@ -452,13 +472,25 @@ public class TintolmarketServer {
         
         public void classify(String wine, int stars){
             if(wineExists(wine)){
+
                 wineList.get(getIndexOfWine(wine)).giveClassification(stars);
-            } else {
                 try {
+
+                    outStream.writeObject(wine + " classified with " + stars + " stars.");
+                    outStream.flush();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                
+            } else {
+                
+                try {
+
                     outStream.writeObject("This wine does not exist!");
                     outStream.flush();
+
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }
