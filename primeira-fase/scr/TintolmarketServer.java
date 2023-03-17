@@ -114,8 +114,8 @@ public class TintolmarketServer {
                         if(userList.get(user).equals(passwd)) {
 
                             username = user;
-                            System.out.println("User " + user + " logged in successful");
-                            outStream.writeObject("Successful log in");
+                            System.out.println("User " + user + " logged in successful.");
+                            outStream.writeObject("Successful log in.");
                             outStream.flush();
 
                         } else {
@@ -132,8 +132,8 @@ public class TintolmarketServer {
 
                         userList.put(user, passwd);
                         username = user;
-                        System.out.println("New user " + user + " created");
-                        outStream.writeObject("Successful log in");
+                        System.out.println("New user " + user + " created.");
+                        outStream.writeObject("Successful log in.");
                         outStream.flush();
                         users.add(this);
                     }
@@ -142,8 +142,8 @@ public class TintolmarketServer {
 
                     userList.put(user, passwd);
                     username = user;
-                    System.out.println("New user " + user + " created");
-                    outStream.writeObject("Successful log in");
+                    System.out.println("New user " + user + " created.");
+                    outStream.writeObject("Successful log in.");
                     outStream.flush();
                     users.add(this);
                 }
@@ -162,7 +162,6 @@ public class TintolmarketServer {
                             case "a":
                                 if(splitMessage.length == 3) {
                                     add(splitMessage[1], splitMessage[2]);
-                                    System.out.println(username + " has added a new wine to the list");
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("add failed due to wrong number of parameters. Be sure to use add 'wine' 'image'.");
@@ -175,7 +174,6 @@ public class TintolmarketServer {
                             case "s":
                                 if(splitMessage.length == 4) {
                                     sell(splitMessage[1], Integer.valueOf(splitMessage[2]),  Integer.valueOf(splitMessage[3]));
-                                    System.out.println(username + " has put " + splitMessage[1] + " on sale");
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("sell failed due to wrong number of parameters. Be sure to use sell 'wine' 'value' 'quantity'.");
@@ -201,7 +199,6 @@ public class TintolmarketServer {
                             case "b":
                                 if(splitMessage.length == 4) {
                                     buy(splitMessage[1], splitMessage[2], Integer.valueOf(splitMessage[3]));
-                                    System.out.println(username + " has bought " + splitMessage[1] + " from " + splitMessage[2]);
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("buy failed due to wrong number of parameters. Be sure to use buy 'wine' 'seller' 'quantity'.");
@@ -239,7 +236,6 @@ public class TintolmarketServer {
                             case "t":
                                 if(splitMessage.length == 3) {
                                     talk(splitMessage[1], this.username, splitMessage[2]);
-                                    System.out.println(username + " has sent a messages to " + splitMessage[1]);
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("talk failed due to wrong number of parameters. Be sure to use talk 'user' 'message'.");
@@ -252,7 +248,7 @@ public class TintolmarketServer {
                             case "r":
                                 if(splitMessage.length == 1) {
                                     read(this.username);
-                                    System.out.println(username + " has been sent his messages");
+                                    System.out.println(username + " has been sent his messages.");
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("read failed due to wrong number of parameters. Be sure to use read.");
@@ -264,7 +260,7 @@ public class TintolmarketServer {
                             
 
                             default:
-                                outStream.writeObject("Please introduce a valid command");
+                                outStream.writeObject("Please introduce a valid command.");
                                 outStream.flush();
 
                         }
@@ -334,7 +330,7 @@ public class TintolmarketServer {
 
                 try {
 
-                    outStream.writeObject("You had no messages in the server inbox");
+                    outStream.writeObject("You had no messages in the server inbox.");
                     outStream.flush();
 
                 } catch (IOException e) {
@@ -347,14 +343,28 @@ public class TintolmarketServer {
 
 
         public void talk(String reciever, String sender, String message) {
-            inbox.add(reciever + ";" + sender + ": " + message);
+            for(ServerThread tr : users) {
+                if(tr.username.equals(reciever)) {
+                    System.out.println(username + " has sent a messages to " + reciever + ".");
+                    inbox.add(reciever + ";" + sender + ": " + message);
+
+                    try {
+                    outStream.writeObject("Message succesufuly delivered.");
+                    } catch (IOException e) {
+                    e.printStackTrace();
+                    }
+                    return;
+                }
+            } 
+            System.out.println(username + " tried to send a messages to a user that does not exist.");
 
             try {
-                outStream.writeObject("Message succesufuly delivered");
+                outStream.writeObject("Introduced a user that does not exist.");
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
 
         public void add(String wineName, String ImgPath){
             TintolmarketWine wine = new TintolmarketWine(wineName, ImgPath);
@@ -364,6 +374,7 @@ public class TintolmarketServer {
                 try {
 
                     wineList.add(wine);
+                    System.out.println(this.username + " has added a new wine to the list.");
                     outStream.writeObject("Added " + wineName + " to the wine list!");
                     outStream.flush();
 
@@ -375,7 +386,8 @@ public class TintolmarketServer {
 
                 try {
 
-                    outStream.writeObject("This wine already exists");
+                    System.out.println(this.username + " tried adding an existing wine to the list.");
+                    outStream.writeObject("This wine already exists.");
                     outStream.flush();
 
                 } catch (IOException e) {
@@ -385,21 +397,35 @@ public class TintolmarketServer {
         }
 
         public void sell(String wine, int value, int quantity){
-            for(int i = 0; i <= wineList.size(); i++){
-                if((wineList.get(i)).getWinename().equals(wine)){
+            if(wineExists(wine)) {
+                for(int i = 0; i <= wineList.size(); i++){
+                    if((wineList.get(i)).getWinename().equals(wine)){
 
-                    wineList.get(i).setQuantity(username, quantity);
-                    wineList.get(i).setValue(username, value);
-                    return;
+                        wineList.get(i).setQuantity(username, quantity);
+                        wineList.get(i).setValue(username, value);
+                        System.out.println(this.username + " has put " + wine + " on sale!");
+                        try {
+                            
+                            outStream.writeObject("You have put " + quantity + " copies of " + wine + " on sale for " + value + "!");
+                            outStream.flush();
+        
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        return;
+                    }
                 }
-            }
-            try {
 
-                outStream.writeObject("This wine does not exist");
-                outStream.flush();
+            } else {
+                try {
 
-            } catch (IOException e) {
-                e.printStackTrace();
+                    System.out.println(this.username + " has tried  to sell a wine that does not exist.");
+                    outStream.writeObject("You are trying to sell a wine that does not exist.");
+                    outStream.flush();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -445,6 +471,7 @@ public class TintolmarketServer {
                     if(wineList.get(index).getQuantitySoldBySeller(seller) >= quantity){
                         int price = wineList.get(getIndexOfWine(wine)).getValueOfWineSoldBySeller(seller) * quantity;
                         if(this.saldo >= price){
+                            System.out.println(this.username + " has bought " + wine + " from " + seller +  ".");
                             wineList.get(index).setQuantity(seller, -quantity);
                             this.saldo -= price;
                             for(ServerThread t: users){
@@ -453,14 +480,17 @@ public class TintolmarketServer {
                                 }
                             }
                         } else {
+                            System.out.println(this.username + "tried to buy a wine that is not sold by " + seller + ".");
                             outStream.writeObject("This wine is not sold by this specified seller!");
                             outStream.flush();
                         }
                     } else {
+                        System.out.println(this.username + "tried to buy a wine that does not exist in the specified quantity.");
                         outStream.writeObject("This wine does not exist in this specified quantity!");
                         outStream.flush();
                     }
                 } else {
+                    System.out.println(this.username + "tried to buy a wine that does not exist.");
                     outStream.writeObject("This wine does not exist!");
                     outStream.flush();
                 }
@@ -484,7 +514,7 @@ public class TintolmarketServer {
                   
                     } else {
 
-                            outStream.writeObject(wine + " has already been classified before. You cannot classify the sanme wine twice");
+                            outStream.writeObject(wine + " has already been classified before. You cannot classify the sanme wine twice.");
                             outStream.flush();
           
                     }
