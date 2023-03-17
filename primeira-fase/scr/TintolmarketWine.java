@@ -19,7 +19,7 @@ public class TintolmarketWine {
         this.sellersList = new HashMap<String,TintolmarketValues>();
     }
 
-    public void setQuantity(String selller, int quant) {
+    public void setQuantity(String seller, int quant) {
         if(!sellersList.containsKey(seller)){
             addSeller(seller);
         }
@@ -41,8 +41,8 @@ public class TintolmarketWine {
         return this.wineName;
     }
 
-    public HashMap<String,TintolmarketValues> getListofSellers() {
-        return this.sellersList;
+    public ArrayList<String> getListofSellers() {
+        return new ArrayList<String>(sellersList.keySet());
     }
 
     public String getPath() {
