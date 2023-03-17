@@ -275,7 +275,7 @@ public class TintolmarketServer {
                 }
 
             } catch(IOException e) {
-                e.printStackTrace();
+                System.out.println("Client " + username + " has disconnected form TintolMarket.");
             }
 
         }
