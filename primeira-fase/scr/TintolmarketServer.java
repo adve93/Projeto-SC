@@ -23,12 +23,14 @@ public class TintolmarketServer {
     //private PrintWriter pw;
     private ArrayList<TintolmarketWine> wineList;
     private ArrayList<String> inbox;
+    private ArrayList<ServerThread> users;
 
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
         this.wineList = new ArrayList<>();
         this.inbox = new ArrayList<>();  
+        this.users = new ArrayList<>();
     }
 
     public static void main(String[] args) {
@@ -70,10 +72,12 @@ public class TintolmarketServer {
         private String username; //Identificador da thread.
         private ObjectOutputStream outStream; //outStream e inStream passados para variaveis globais de serverThread para podermos criar metodos como read e talk
         private ObjectInputStream inStream;
+        private int saldo;
 
         ServerThread(Socket newClientSocket) {
 			this.socket = newClientSocket;
             this.username = null;
+            this.saldo = 200;
             try {
 
                 outStream = new ObjectOutputStream(socket.getOutputStream());
@@ -131,7 +135,7 @@ public class TintolmarketServer {
                         System.out.println("New user " + user + " created");
                         outStream.writeObject("Successful log in");
                         outStream.flush();
-
+                        users.add(this);
                     }
 
                 } else {
@@ -141,7 +145,7 @@ public class TintolmarketServer {
                     System.out.println("New user " + user + " created");
                     outStream.writeObject("Successful log in");
                     outStream.flush();
-                    
+                    users.add(this);
                 }
                 
                 //Listening for msg
@@ -184,6 +188,23 @@ public class TintolmarketServer {
                             case "t":
                                 talk(splitMessage[1], this.username, splitMessage[2]);
                                 System.out.println(username + " has sent a messages to " + splitMessage[1]);
+                                break;
+
+                            case "buy":
+                            case "b":
+                                buy(splitMessage[1], splitMessage[2], Integer.valueOf(splitMessage[3]));
+                                System.out.println(username + " has bought " + splitMessage[1] + " from " + splitMessage[2]);
+                                break;
+
+                            case "wallet":
+                            case "w":
+                                outStream.writeObject(Integer.toString(this.saldo));
+                                outStream.flush();
+                                break;
+
+                            case "classify":
+                            case "c":
+                                classify(splitMessage[1], Integer.valueOf(splitMessage[2]));
                                 break;
 
                             default:
@@ -268,6 +289,19 @@ public class TintolmarketServer {
 
         }
 
+
+        /*
+         * for(user : )
+         * 
+         * 
+         * 
+         * 
+         * 
+         */
+
+
+
+
         public void talk(String reciever, String sender, String message) {
 
             inbox.add(reciever + ";" + sender + ": " + message);
@@ -324,6 +358,66 @@ public class TintolmarketServer {
                 e.printStackTrace();
             }
         }
+
+
+        public void buy(String wine, String seller, int quantity){
+            try{
+                if(wineExists(wine)){
+                    int index = getIndexOfWine(wine);
+                    if(wineList.get(index).getQuantitySoldBySeller(seller) >= quantity){
+                        int price = wineList.get(getIndexOfWine(wine)).getValueOfWineSoldBySeller(seller) * quantity;
+                        if(this.saldo >= price){
+                            wineList.get(index).setQuantity(seller, -quantity);
+                            this.saldo -= price;
+                            for(ServerThread t: users){
+                                if(t.username.equals(seller)){
+                                    t.saldo += price;
+                                }
+                            }
+                        } else {
+                            outStream.writeObject("This wine is not sold by this specified seller!");
+                            outStream.flush();
+                        }
+                    } else {
+                        outStream.writeObject("This wine does not exist in this specified quantity!");
+                        outStream.flush();
+                    }
+                } else {
+                    outStream.writeObject("This wine does not exist!");
+                    outStream.flush();
+                }
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
+        
+        public void classify(String wine, int stars){
+            if(wineExists(wine)){
+                wineList.get(getIndexOfWine(wine)).giveClassification(stars);
+            } else {
+                try {
+                    outStream.writeObject("This wine does not exist!");
+                    outStream.flush();
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        }
+
+
+
+        private boolean wineExists(String wine){
+            for(TintolmarketWine w: wineList){
+                if(w.getWinename().equals(wine)){
+                    return true;
+                }
+            }
+            return false;
+        }
+
 
         private int getIndexOfWine(String wine){
             for(int i = 0; i <= wineList.size(); i++){
