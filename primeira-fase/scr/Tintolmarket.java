@@ -1,28 +1,30 @@
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-//import java.io.ObjectOutputStream.PutField;
-//import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
-
-//import javax.sound.sampled.FloatControl;
 
 public class Tintolmarket {
 
     private Socket cSocket;
     private ObjectOutputStream outStream;
 	private ObjectInputStream inStream;
+    private BufferedOutputStream out;
     private String user;
     private String password;
-    //private float saldo; Tirar comment quando se for usar
 
     public Tintolmarket(Socket cSocket, String user, String password){
         try {
             this.cSocket = cSocket;
             this.outStream = new ObjectOutputStream(cSocket.getOutputStream());
             this.inStream = new ObjectInputStream(cSocket.getInputStream());
+            this.out = new BufferedOutputStream(cSocket.getOutputStream());
             this.user = user;
             this.password = password;
         } catch (IOException e){
@@ -41,8 +43,26 @@ public class Tintolmarket {
             Scanner sc = new Scanner(System.in);
             while(cSocket.isConnected()){
                 String command = sc.nextLine();
-                outStream.writeObject(command);
-                outStream.flush();
+                String[] temp = command.split(" ");
+                if(temp[0].equals("add") || temp[0].equals("a")){
+                    outStream.writeObject(command);
+                    outStream.flush();  
+                    File f = new File(temp[2]);
+                    FileInputStream fin = new FileInputStream(f);
+                    InputStream input = new BufferedInputStream(fin);
+                    outStream.writeObject(f.length());
+                    outStream.flush();
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = 0;
+                    while((bytesRead = input.read(buffer)) != -1){                     
+                        out.write(buffer, 0, bytesRead);
+                    }
+                    input.close();
+                    out.flush();
+                } else {
+                    outStream.writeObject(command);
+                    outStream.flush();
+                }
             }
             sc.close();
 
@@ -74,7 +94,7 @@ public class Tintolmarket {
 
                     }
                 } catch (IOException e){
-                    closeClient(cSocket, outStream, inStream);
+                    closeClient(cSocket, outStream, inStream, out);
                 }
             }
 
@@ -85,7 +105,7 @@ public class Tintolmarket {
         String ip = args[0];
         String user = args[1];
         String password;
-        if(args[2] != null){
+        if(args.length == 3){
             password = args[2];
         } else {
             System.out.println("Password: ");
@@ -102,7 +122,7 @@ public class Tintolmarket {
     }
 
 
-    public void closeClient(Socket cSocket, ObjectOutputStream outStream, ObjectInputStream inStream ){
+    public void closeClient(Socket cSocket, ObjectOutputStream outStream, ObjectInputStream inStream, BufferedOutputStream out ){
         try {
 
             if(inStream != null) {
@@ -111,10 +131,13 @@ public class Tintolmarket {
             if(outStream != null) {
                 outStream.close();
             }
+            if(out != null) {
+                out.close();
+            }
             if(cSocket != null) {
                 cSocket.close();
             }
-
+            
         } catch(IOException e) {
             e.printStackTrace();
         }

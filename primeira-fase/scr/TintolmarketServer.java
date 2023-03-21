@@ -9,18 +9,16 @@ import java.net.Socket;
 //import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.io.BufferedWriter;
 //import java.util.Scanner;
-//import java.io.File;
-//import java.io.FileNotFoundException;
-//import java.io.FileWriter;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 
 public class TintolmarketServer {
 
     private HashMap<String,String> userList;
     private ServerSocket sSocket;
-    //private File users;
-    //private FileWriter writer;
-    //private PrintWriter pw;
+    private BufferedWriter writer;
     private ArrayList<TintolmarketWine> wineList;
     private ArrayList<String> inbox;
     private ArrayList<ServerThread> users;
@@ -31,6 +29,12 @@ public class TintolmarketServer {
         this.wineList = new ArrayList<>();
         this.inbox = new ArrayList<>();  
         this.users = new ArrayList<>();
+        try{
+            this.writer = new BufferedWriter(new FileWriter("users.txt"));
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+
     }
 
     public static void main(String[] args) {
@@ -60,8 +64,14 @@ public class TintolmarketServer {
                 newServerThread.start();
 
             }
-
+            writer.close();
         } catch(IOException e) {
+            try {
+                System.out.println("entrou");
+                writer.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
             e.printStackTrace();
         }
 
@@ -115,6 +125,7 @@ public class TintolmarketServer {
 
                             username = user;
                             System.out.println("User " + user + " logged in successful.");
+                            
                             outStream.writeObject("Successful log in.");
                             outStream.flush();
 
@@ -148,6 +159,7 @@ public class TintolmarketServer {
                     users.add(this);
                 }
                 
+               
                 //Listening for msg
                 String messageFromClient;
                 while(socket.isConnected()) {
@@ -275,6 +287,12 @@ public class TintolmarketServer {
                 }
 
             } catch(IOException e) {
+                try {
+                    writer.write(username + " " + userList.get(username) + " " + this.saldo);
+                    writer.flush();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
                 System.out.println("Client " + username + " has disconnected form TintolMarket.");
             }
 
@@ -557,8 +575,4 @@ public class TintolmarketServer {
         }
     } //FIM DE SERVER THREAD
 
-
-    
-
-    
 }
