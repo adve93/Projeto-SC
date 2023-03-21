@@ -2,10 +2,12 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
@@ -15,21 +17,27 @@ public class Tintolmarket {
     private Socket cSocket;
     private ObjectOutputStream outStream;
 	private ObjectInputStream inStream;
-    private BufferedOutputStream out;
+    private BufferedOutputStream outBuff;
+    private BufferedInputStream inBuff;
     private String user;
     private String password;
+    private String dataBaseString;
 
     public Tintolmarket(Socket cSocket, String user, String password){
         try {
             this.cSocket = cSocket;
             this.outStream = new ObjectOutputStream(cSocket.getOutputStream());
             this.inStream = new ObjectInputStream(cSocket.getInputStream());
-            this.out = new BufferedOutputStream(cSocket.getOutputStream());
+            this.outBuff = new BufferedOutputStream(cSocket.getOutputStream());
+            this.inBuff = new BufferedInputStream(cSocket.getInputStream());
             this.user = user;
             this.password = password;
+            this.dataBaseString = "..//client"+user+"DataBase//";
+            File temp = new File(dataBaseString);
+            temp.mkdir();
         } catch (IOException e){
             System.out.println("An error as ocurred!");
-            closeClient(cSocket, outStream, inStream);
+            closeClient(cSocket, outStream, inStream, outBuff);
         }
     }
 
@@ -47,7 +55,7 @@ public class Tintolmarket {
                 if(temp[0].equals("add") || temp[0].equals("a")){
                     outStream.writeObject(command);
                     outStream.flush();  
-                    File f = new File(temp[2]);
+                    File f = new File(dataBaseString+temp[2]);
                     FileInputStream fin = new FileInputStream(f);
                     InputStream input = new BufferedInputStream(fin);
                     outStream.writeObject(f.length());
@@ -55,10 +63,10 @@ public class Tintolmarket {
                     byte[] buffer = new byte[1024];
                     int bytesRead = 0;
                     while((bytesRead = input.read(buffer)) != -1){                     
-                        out.write(buffer, 0, bytesRead);
+                        outBuff.write(buffer, 0, bytesRead);
                     }
                     input.close();
-                    out.flush();
+                    outBuff.flush();
                 } else {
                     outStream.writeObject(command);
                     outStream.flush();
@@ -67,7 +75,7 @@ public class Tintolmarket {
             sc.close();
 
         } catch (IOException e){
-            closeClient(cSocket, outStream, inStream);
+            closeClient(cSocket, outStream, inStream, outBuff);
         }
     }
 
@@ -84,17 +92,35 @@ public class Tintolmarket {
                         try {
 
                             messageFromServer = (String)inStream.readObject();
-                            System.out.println(messageFromServer);
-
+                            if(messageFromServer.contains("start")){
+                                File f = new File(dataBaseString+(String)inStream.readObject()+".jpg");
+                                long fileSize = (long) inStream.readObject();
+                                System.out.println(fileSize);
+                                FileOutputStream fout = new FileOutputStream(f);
+                                OutputStream output = new BufferedOutputStream(fout);
+                                byte[] buffer = new byte[1024];
+                                int bytesRead = 0;
+                                while(fileSize > 0){
+                                    bytesRead = inBuff.read(buffer);
+                                    output.write(buffer, 0, bytesRead);
+                                    output.flush();
+                                    fileSize -= bytesRead;
+                                    System.out.println(fileSize);
+                                }
+                                System.out.println("acabou");
+                            } else{
+                                System.out.println(messageFromServer);
+                            }
+                            
                         } catch (ClassNotFoundException e1) {
-                            closeClient(cSocket, outStream, inStream);
+                            closeClient(cSocket, outStream, inStream, outBuff);
                             e1.printStackTrace();
                         }
 
 
                     }
                 } catch (IOException e){
-                    closeClient(cSocket, outStream, inStream, out);
+                    closeClient(cSocket, outStream, inStream, outBuff);
                 }
             }
 
@@ -122,7 +148,7 @@ public class Tintolmarket {
     }
 
 
-    public void closeClient(Socket cSocket, ObjectOutputStream outStream, ObjectInputStream inStream, BufferedOutputStream out ){
+    public void closeClient(Socket cSocket, ObjectOutputStream outStream, ObjectInputStream inStream, BufferedOutputStream outBuff ){
         try {
 
             if(inStream != null) {
@@ -131,8 +157,8 @@ public class Tintolmarket {
             if(outStream != null) {
                 outStream.close();
             }
-            if(out != null) {
-                out.close();
+            if(outBuff != null) {
+                outBuff.close();
             }
             if(cSocket != null) {
                 cSocket.close();

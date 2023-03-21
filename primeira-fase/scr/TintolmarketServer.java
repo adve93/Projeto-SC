@@ -1,6 +1,8 @@
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 //import java.io.PrintWriter;
 //import java.io.UnsupportedEncodingException;
 //import java.io.ObjectOutputStream.PutField;
@@ -9,10 +11,16 @@ import java.net.Socket;
 //import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
 //import java.util.Scanner;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
+
 
 public class TintolmarketServer {
 
@@ -22,6 +30,7 @@ public class TintolmarketServer {
     private ArrayList<TintolmarketWine> wineList;
     private ArrayList<String> inbox;
     private ArrayList<ServerThread> users;
+
 
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
@@ -82,6 +91,8 @@ public class TintolmarketServer {
         private String username; //Identificador da thread.
         private ObjectOutputStream outStream; //outStream e inStream passados para variaveis globais de serverThread para podermos criar metodos como read e talk
         private ObjectInputStream inStream;
+        private BufferedInputStream inBuff;
+        private BufferedOutputStream outBuff;
         private int saldo;
 
         ServerThread(Socket newClientSocket) {
@@ -90,8 +101,10 @@ public class TintolmarketServer {
             this.saldo = 200;
             try {
 
-                outStream = new ObjectOutputStream(socket.getOutputStream());
-                inStream = new ObjectInputStream(socket.getInputStream());
+                this.outStream = new ObjectOutputStream(socket.getOutputStream());
+                this.inStream = new ObjectInputStream(socket.getInputStream());
+                this.inBuff = new BufferedInputStream(socket.getInputStream());
+                this.outBuff = new BufferedOutputStream(socket.getOutputStream());
 
             } catch(IOException e) {
                 e.printStackTrace();
@@ -385,18 +398,34 @@ public class TintolmarketServer {
 
 
         public void add(String wineName, String ImgPath){
-            TintolmarketWine wine = new TintolmarketWine(wineName, ImgPath);
+            String path  = "..//serverBase//"+ImgPath;
+            System.out.println(path);
+            TintolmarketWine wine = new TintolmarketWine(wineName, path);
 
             if(!wineList.contains(wine)){
-
                 try {
-
+                    long fileSize = (long) inStream.readObject();
+                    System.out.println(fileSize);
+                    File f = new File(path);
+                    FileOutputStream fout = new FileOutputStream(f);
+                    OutputStream output = new BufferedOutputStream(fout);
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = 0;
+                    while(fileSize > 0){
+                        bytesRead = inBuff.read(buffer);
+                        output.write(buffer, 0, bytesRead);
+                        output.flush();
+                        fileSize -= bytesRead;
+                    }
+                    output.close();
                     wineList.add(wine);
                     System.out.println(this.username + " has added a new wine to the list.");
                     outStream.writeObject("Added " + wineName + " to the wine list!");
                     outStream.flush();
 
                 } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
                     e.printStackTrace();
                 }
                 
@@ -451,21 +480,40 @@ public class TintolmarketServer {
             try {
 
                 if(wineExists(wine)) {
+                    TintolmarketWine temp = wineList.get(getIndexOfWine(wine));
 
                     outStream.writeObject("Wine name: " + wine);
-                    outStream.writeObject("Wine image: " + wineList.get(getIndexOfWine(wine)).getPath());
-                    int stars = wineList.get(getIndexOfWine(wine)).getClassification();
+                    outStream.flush();
+                    outStream.writeObject("Wine image: " + temp.getPath());
+                    outStream.flush();
+                    outStream.writeObject("start");
+                    outStream.flush();
+                    outStream.writeObject(wine);
+                    outStream.flush();
+                    File f = new File(temp.getPath());
+                    FileInputStream fin = new FileInputStream(f);
+                    InputStream input = new BufferedInputStream(fin);
+                    outStream.writeObject(f.length());
+                    outStream.flush();
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = 0;
+                    while((bytesRead = input.read(buffer)) != -1){                     
+                        outBuff.write(buffer, 0, bytesRead);
+                    }
+                    input.close();
+
+                    int stars = temp.getClassification();
                     if(stars != 0) {
-                        outStream.writeObject("Wine classification: " + wineList.get(getIndexOfWine(wine)).getClassification());
+                        outStream.writeObject("Wine classification: " + temp.getClassification());
                     }
 
-                    if(wineList.get(getIndexOfWine(wine)).getListofSellers().size() > 0){
-                        for(int i = 0; i < wineList.get(getIndexOfWine(wine)).getListofSellers().size(); i++){
+                    if(temp.getListofSellers().size() > 0){
+                        for(int i = 0; i < temp.getListofSellers().size(); i++){
 
-                            String seller = wineList.get(getIndexOfWine(wine)).getListofSellers().get(i);
+                            String seller = temp.getListofSellers().get(i);
                             outStream.writeObject("Seller " + i +": " +  seller);
-                            outStream.writeObject("Quantity: " + wineList.get(getIndexOfWine(wine)).getQuantitySoldBySeller(seller));
-                            outStream.writeObject("Value: " + wineList.get(getIndexOfWine(wine)).getValueOfWineSoldBySeller(seller));
+                            outStream.writeObject("Quantity: " + temp.getQuantitySoldBySeller(seller));
+                            outStream.writeObject("Value: " + temp.getValueOfWineSoldBySeller(seller));
 
                         }
                     }
