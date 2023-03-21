@@ -84,7 +84,15 @@ public class Tintolmarket {
     public static void main(String[] args) throws UnknownHostException, IOException {
         String ip = args[0];
         String user = args[1];
-        String password = args[2];
+        String password;
+        if(args[2] != null){
+            password = args[2];
+        } else {
+            System.out.println("Password: ");
+            Scanner scanner = new Scanner(System.in);
+            password = scanner.nextLine();
+            scanner.close();
+        }
         Socket cSocket = new Socket(ip, 12345);
         Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
         System.out.println("Connecting...");
