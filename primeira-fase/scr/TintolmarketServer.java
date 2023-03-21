@@ -399,13 +399,11 @@ public class TintolmarketServer {
 
         public void add(String wineName, String ImgPath){
             String path  = "..//serverBase//"+ImgPath;
-            System.out.println(path);
             TintolmarketWine wine = new TintolmarketWine(wineName, path);
 
             if(!wineList.contains(wine)){
                 try {
                     long fileSize = (long) inStream.readObject();
-                    System.out.println(fileSize);
                     File f = new File(path);
                     FileOutputStream fout = new FileOutputStream(f);
                     OutputStream output = new BufferedOutputStream(fout);
@@ -481,30 +479,36 @@ public class TintolmarketServer {
 
                 if(wineExists(wine)) {
                     TintolmarketWine temp = wineList.get(getIndexOfWine(wine));
+                    String path = temp.getPath();
 
                     outStream.writeObject("Wine name: " + wine);
                     outStream.flush();
-                    outStream.writeObject("Wine image: " + temp.getPath());
+                    outStream.writeObject("Wine image: " + path);
                     outStream.flush();
                     outStream.writeObject("start");
                     outStream.flush();
-                    outStream.writeObject(wine);
+                    String[] img = path.split("//"); //(..//serverbase//nome)
+                    outStream.writeObject(img[2]);
                     outStream.flush();
-                    File f = new File(temp.getPath());
+
+                    File f = new File(path);
                     FileInputStream fin = new FileInputStream(f);
                     InputStream input = new BufferedInputStream(fin);
                     outStream.writeObject(f.length());
                     outStream.flush();
                     byte[] buffer = new byte[1024];
                     int bytesRead = 0;
+                    
                     while((bytesRead = input.read(buffer)) != -1){                     
                         outBuff.write(buffer, 0, bytesRead);
+                        outBuff.flush();
                     }
                     input.close();
 
                     int stars = temp.getClassification();
                     if(stars != 0) {
                         outStream.writeObject("Wine classification: " + temp.getClassification());
+                        outStream.flush();
                     }
 
                     if(temp.getListofSellers().size() > 0){
@@ -512,8 +516,11 @@ public class TintolmarketServer {
 
                             String seller = temp.getListofSellers().get(i);
                             outStream.writeObject("Seller " + i +": " +  seller);
+                            outStream.flush();
                             outStream.writeObject("Quantity: " + temp.getQuantitySoldBySeller(seller));
+                            outStream.flush();
                             outStream.writeObject("Value: " + temp.getValueOfWineSoldBySeller(seller));
+                            outStream.flush();
 
                         }
                     }
@@ -568,6 +575,15 @@ public class TintolmarketServer {
         
         public void classify(String wine, int stars){
             int res = 0;
+            if(stars < 0 || stars > 5) {
+                try {
+                    outStream.writeObject("You can only give from 0 to 5 stars.");
+                    outStream.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return;
+            }
             if(wineExists(wine)){
 
                 res = wineList.get(getIndexOfWine(wine)).giveClassification(stars, this.username);
@@ -580,7 +596,7 @@ public class TintolmarketServer {
                   
                     } else {
 
-                            outStream.writeObject(wine + " has already been classified before. You cannot classify the sanme wine twice.");
+                            outStream.writeObject(wine + " has already been classified before. You cannot classify the same wine twice.");
                             outStream.flush();
           
                     }

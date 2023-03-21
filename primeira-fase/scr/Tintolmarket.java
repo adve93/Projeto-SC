@@ -52,21 +52,25 @@ public class Tintolmarket {
             while(cSocket.isConnected()){
                 String command = sc.nextLine();
                 String[] temp = command.split(" ");
-                if(temp[0].equals("add") || temp[0].equals("a")){
-                    outStream.writeObject(command);
-                    outStream.flush();  
+                if(temp[0].equals("add") || temp[0].equals("a")){ 
                     File f = new File(dataBaseString+temp[2]);
-                    FileInputStream fin = new FileInputStream(f);
-                    InputStream input = new BufferedInputStream(fin);
-                    outStream.writeObject(f.length());
-                    outStream.flush();
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = 0;
-                    while((bytesRead = input.read(buffer)) != -1){                     
-                        outBuff.write(buffer, 0, bytesRead);
+                    if(f.exists() && !f.isDirectory()) { 
+                        outStream.writeObject(command);
+                        outStream.flush(); 
+                        FileInputStream fin = new FileInputStream(f);
+                        InputStream input = new BufferedInputStream(fin);
+                        outStream.writeObject(f.length());
+                        outStream.flush();
+                        byte[] buffer = new byte[1024];
+                        int bytesRead = 0;
+                        while((bytesRead = input.read(buffer)) != -1){                     
+                            outBuff.write(buffer, 0, bytesRead);
+                        }
+                        input.close();
+                        outBuff.flush();
+                    } else {
+                        System.out.println("Certifiquese que a imagem que desenha mandar se encontra em " + dataBaseString);
                     }
-                    input.close();
-                    outBuff.flush();
                 } else {
                     outStream.writeObject(command);
                     outStream.flush();
@@ -93,9 +97,8 @@ public class Tintolmarket {
 
                             messageFromServer = (String)inStream.readObject();
                             if(messageFromServer.contains("start")){
-                                File f = new File(dataBaseString+(String)inStream.readObject()+".jpg");
+                                File f = new File(dataBaseString+(String)inStream.readObject());
                                 long fileSize = (long) inStream.readObject();
-                                System.out.println(fileSize);
                                 FileOutputStream fout = new FileOutputStream(f);
                                 OutputStream output = new BufferedOutputStream(fout);
                                 byte[] buffer = new byte[1024];
@@ -105,9 +108,8 @@ public class Tintolmarket {
                                     output.write(buffer, 0, bytesRead);
                                     output.flush();
                                     fileSize -= bytesRead;
-                                    System.out.println(fileSize);
                                 }
-                                System.out.println("acabou");
+                                output.close();
                             } else{
                                 System.out.println(messageFromServer);
                             }
