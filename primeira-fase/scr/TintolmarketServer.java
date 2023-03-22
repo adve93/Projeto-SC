@@ -25,6 +25,7 @@ import java.io.FileWriter;
 public class TintolmarketServer {
 
     private HashMap<String,String> userList;
+    private HashMap<String,Integer> userSaldo;
     private ServerSocket sSocket;
     private BufferedWriter writer;
     private ArrayList<TintolmarketWine> wineList;
@@ -35,6 +36,7 @@ public class TintolmarketServer {
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
+        this.userSaldo = new HashMap<String,Integer>();
         this.wineList = new ArrayList<>();
         this.inbox = new ArrayList<>();  
         this.users = new ArrayList<>();
@@ -122,6 +124,9 @@ public class TintolmarketServer {
                 try {
 					user = (String)inStream.readObject();
 					passwd = (String)inStream.readObject();
+                    if(userSaldo.containsKey(user)) {
+                        this.saldo = userSaldo.get(user);
+                    }
 
 				} catch (ClassNotFoundException e1) {
                     closeEverything(socket, inStream, outStream);
@@ -155,6 +160,7 @@ public class TintolmarketServer {
                     } else {
 
                         userList.put(user, passwd);
+                        userSaldo.put(user, this.saldo);
                         username = user;
                         System.out.println("New user " + user + " created.");
                         outStream.writeObject("Successful log in.");
@@ -165,6 +171,7 @@ public class TintolmarketServer {
                 } else {
 
                     userList.put(user, passwd);
+                    userSaldo.put(user, this.saldo);
                     username = user;
                     System.out.println("New user " + user + " created.");
                     outStream.writeObject("Successful log in.");
@@ -547,9 +554,11 @@ public class TintolmarketServer {
                             System.out.println(this.username + " has bought " + wine + " from " + seller +  ".");
                             wineList.get(index).setQuantity(seller, -quantity);
                             this.saldo -= price;
+                            userSaldo.put(this.username, this.saldo);
                             for(ServerThread t: users){
-                                if(t.username.equals(seller)){
+                                if(t.username.equals(seller)){                                
                                     t.saldo += price;
+                                    userSaldo.put(t.username, t.saldo);
                                 }
                             }
                         } else {
