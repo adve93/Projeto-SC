@@ -13,12 +13,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 //import java.util.Scanner;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 
 
@@ -40,11 +42,7 @@ public class TintolmarketServer {
         this.wineList = new ArrayList<>();
         this.inbox = new ArrayList<>();  
         this.users = new ArrayList<>();
-        try{
-            this.writer = new BufferedWriter(new FileWriter("users.txt"));
-        } catch (IOException e){
-            e.printStackTrace();
-        }
+        this.writer = null;
 
     }
 
@@ -61,6 +59,12 @@ public class TintolmarketServer {
 			System.exit(-1);
 		}
 		TintolmarketServer server = new TintolmarketServer(sSocket);
+        server.loadData();
+        try {
+            server.writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 		server.startServer();
 	}
 
@@ -78,14 +82,32 @@ public class TintolmarketServer {
             writer.close();
         } catch(IOException e) {
             try {
-                System.out.println("entrou");
+               
                 writer.close();
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
+            System.out.println("entrou");
             e.printStackTrace();
         }
 
+    }
+
+    public void loadData(){
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader("..//serverBase//users.txt"));
+                String line;
+                while((line = reader.readLine()) != null){
+                    String[] data = line.split(" ");
+                    userList.put(data[0], data[1]);
+                    userSaldo.put(data[0], Integer.valueOf(data[2]));
+                }
+                reader.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e){
+                e.printStackTrace();
+            }
     }
 
     class ServerThread extends Thread {
@@ -308,7 +330,7 @@ public class TintolmarketServer {
 
             } catch(IOException e) {
                 try {
-                    writer.write(username + " " + userList.get(username) + " " + this.saldo);
+                    writer.write(username + " " + userList.get(username) + " " + this.saldo +"\n");
                     writer.flush();
                 } catch (IOException e1) {
                     e1.printStackTrace();
