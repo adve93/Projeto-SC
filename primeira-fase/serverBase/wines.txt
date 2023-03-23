@@ -1,0 +1,3 @@
+yucky ..//serverBase//tinto.jpg 1 0
+Afonso 40 3
+tinto ..//serverBase//tinto.jpg 0 0

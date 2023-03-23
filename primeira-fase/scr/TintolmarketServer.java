@@ -28,6 +28,7 @@ public class TintolmarketServer {
 
     private HashMap<String,String> userList;
     private HashMap<String,Integer> userSaldo;
+    private ArrayList<String> usernames;
     private ServerSocket sSocket;
     private BufferedWriter writer;
     private ArrayList<TintolmarketWine> wineList;
@@ -42,13 +43,13 @@ public class TintolmarketServer {
         this.wineList = new ArrayList<>();
         this.inbox = new ArrayList<>();  
         this.users = new ArrayList<>();
+        this.usernames = new ArrayList<>();
         this.writer = null;
 
     }
 
     public static void main(String[] args) {
         ServerSocket sSocket = null;
-        
         try {
 
 			sSocket = new ServerSocket(12345);
@@ -64,8 +65,8 @@ public class TintolmarketServer {
             server.writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
         } catch (IOException e) {
             e.printStackTrace();
-        }
-		server.startServer();
+        } 
+        server.startServer();
 	}
 
     public void startServer() {
@@ -99,10 +100,36 @@ public class TintolmarketServer {
                 String line;
                 while((line = reader.readLine()) != null){
                     String[] data = line.split(" ");
+                    usernames.add(data[0]);
                     userList.put(data[0], data[1]);
-                    userSaldo.put(data[0], Integer.valueOf(data[2]));
                 }
                 reader.close();
+
+                reader = new BufferedReader(new FileReader("..//serverBase//usersSaldo.txt"));
+                while((line = reader.readLine()) != null){
+                    String[] data = line.split(" ");
+                    userSaldo.put(data[0], Integer.valueOf(data[1]));
+                }
+                reader.close();
+
+                reader = new BufferedReader(new FileReader("..//serverBase//wines.txt"));
+                while((line = reader.readLine()) != null){
+                    String[] data = line.split(" ");
+                    TintolmarketWine wine = new TintolmarketWine(data[0], data[1]);
+                    wine.setFinalClassification(Integer.valueOf(data[3]));
+                    int wineSellers = Integer.valueOf(data[2]);
+                    while(wineSellers > 0) {
+                        line = reader.readLine();
+                        data = line.split(" ");
+                        wine.setQuantity(data[0], Integer.valueOf(data[2]));
+                        wine.setValue(data[0], Integer.valueOf(data[1]));
+                        wineSellers--;
+                    }
+                    wineList.add(wine);
+
+                }
+                reader.close();
+
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e){
@@ -161,8 +188,7 @@ public class TintolmarketServer {
                     
                     if(userList.containsKey(user)) {
 
-                        if(userList.get(user).equals(passwd)) {
-
+                        if(userList.get(user).equals(passwd)) {                     
                             username = user;
                             System.out.println("User " + user + " logged in successful.");
                             
@@ -181,6 +207,7 @@ public class TintolmarketServer {
 
                     } else {
 
+                        usernames.add(user);
                         userList.put(user, passwd);
                         userSaldo.put(user, this.saldo);
                         username = user;
@@ -188,10 +215,12 @@ public class TintolmarketServer {
                         outStream.writeObject("Successful log in.");
                         outStream.flush();
                         users.add(this);
+                        writeUsers();
+                        writeSaldo();
                     }
 
                 } else {
-
+                    usernames.add(user);
                     userList.put(user, passwd);
                     userSaldo.put(user, this.saldo);
                     username = user;
@@ -199,6 +228,8 @@ public class TintolmarketServer {
                     outStream.writeObject("Successful log in.");
                     outStream.flush();
                     users.add(this);
+                    writeUsers();
+                    writeSaldo();
                 }
                 
                
@@ -329,15 +360,56 @@ public class TintolmarketServer {
                 }
 
             } catch(IOException e) {
-                try {
-                    writer.write(username + " " + userList.get(username) + " " + this.saldo +"\n");
-                    writer.flush();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
+                writeSaldo();
                 System.out.println("Client " + username + " has disconnected form TintolMarket.");
             }
 
+        }
+
+        public void writeUsers() {
+            try {
+                writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
+                for(String tag : usernames) {
+                    writer.write(tag + " " + userList.get(tag) + "\n");
+                    writer.flush();
+                }
+                writer.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        }
+
+        public void writeSaldo() {
+            try {
+                writer = new BufferedWriter(new FileWriter("..//serverBase//usersSaldo.txt"));
+                for(String tag : usernames) {
+                    writer.write(tag + " " + userSaldo.get(tag) +"\n");
+                    writer.flush();
+                }
+                writer.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        }
+
+        public void writeWine() {
+            try {
+                writer = new BufferedWriter(new FileWriter("..//serverBase//wines.txt"));
+                for(TintolmarketWine wine : wineList) {
+                    writer.write(wine.getWinename() + " " + wine.getPath() + " " + wine.getListofSellers().size() + " " + wine.getClassification() + "\n");
+                    writer.flush();
+                    if(wine.getListofSellers().size() > 0) {
+                        for(String seller: wine.getListofSellers()) {
+                            writer.write(seller + " " + wine.getValueOfWineSoldBySeller(seller) + " " + wine.getQuantitySoldBySeller(seller) + "\n");
+                            writer.flush();
+                        }
+                    }
+
+                }
+                writer.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
         }
 
         public void closeEverything(Socket socket, ObjectInputStream inStream, ObjectOutputStream outStream) {
@@ -446,6 +518,7 @@ public class TintolmarketServer {
                     }
                     output.close();
                     wineList.add(wine);
+                    writeWine();
                     System.out.println(this.username + " has added a new wine to the list.");
                     outStream.writeObject("Added " + wineName + " to the wine list!");
                     outStream.flush();
@@ -482,6 +555,7 @@ public class TintolmarketServer {
                             
                             outStream.writeObject("You have put " + quantity + " copies of " + wine + " on sale for " + value + "!");
                             outStream.flush();
+                            writeWine();
         
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -581,8 +655,14 @@ public class TintolmarketServer {
                                 if(t.username.equals(seller)){                                
                                     t.saldo += price;
                                     userSaldo.put(t.username, t.saldo);
+                                    writeSaldo();
+                                    writeWine();
                                 }
                             }
+                            outStream.writeObject("You have bought " + wine + "from " + seller + "!");
+                            outStream.flush();
+                            outStream.writeObject("You have " + this.saldo + "euros remaining!");
+                            outStream.flush();
                         } else {
                             System.out.println(this.username + "tried to buy a wine that is not sold by " + seller + ".");
                             outStream.writeObject("This wine is not sold by this specified seller!");
@@ -624,6 +704,7 @@ public class TintolmarketServer {
 
                             outStream.writeObject(wine + " classified with " + stars + " stars.");
                             outStream.flush();
+                            writeWine();
                   
                     } else {
 

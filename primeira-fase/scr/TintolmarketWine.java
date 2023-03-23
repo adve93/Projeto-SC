@@ -5,6 +5,7 @@ public class TintolmarketWine {
     
     private String wineName;
     private String path; //Caminho para a imagem associada ao vinho
+    private int finalClassification;
     private ArrayList<Integer> classifications;
     private HashMap<String,TintolmarketValues> sellersList;
     private ArrayList<String> hasClassified;
@@ -16,6 +17,7 @@ public class TintolmarketWine {
     public TintolmarketWine(String wineName, String path){
         this.wineName = wineName;
         this.path = path;
+        this.finalClassification = 0;
         this.hasClassified = new ArrayList<>();
         this.classifications = new ArrayList<>();
         this.sellersList = new HashMap<String,TintolmarketValues>();
@@ -66,15 +68,19 @@ public class TintolmarketWine {
     }
 
     public int getClassification() {
-        int sum = 0;
         for(Integer num : this.classifications) {
-            sum += num;
+            finalClassification += num;
         }
         if (this.classifications.size() > 0){
-            return sum / (this.classifications.size());
+            finalClassification = finalClassification / (this.classifications.size());
+            return finalClassification;
         }
         return 0;
         
+    }
+
+    public void setFinalClassification(int num) {
+        this.finalClassification = num;
     }
 
 
