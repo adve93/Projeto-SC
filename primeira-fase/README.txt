@@ -28,3 +28,5 @@ Como executar:
                 representa a base de dados que diz respeito a esse user, se quisermos fazer um "add" de um novo vinho,
                 a imagem que diz respeito a esse vinho tem de ser posta previamente nessa pasta antes de se fazer o comando
                 add.
+        3 -> O server tem uma pasta chamada "serverBase" que representa a sua base de dados, esta pasta NÃO PODE SER APAGADA já que
+                a mesma é crucial para o programa funcionar, é onde o server guarda as suas imagens e os ficherios txt com o estado do progrma
