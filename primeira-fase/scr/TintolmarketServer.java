@@ -32,6 +32,7 @@ public class TintolmarketServer {
     }
 
     public static void main(String[] args) {
+<<<<<<< Updated upstream
         ServerSocket sSocket = null;
         
         try {
@@ -45,6 +46,33 @@ public class TintolmarketServer {
 		}
 		TintolmarketServer server = new TintolmarketServer(sSocket);
 		server.startServer();
+=======
+        if(args.length <= 1) {
+            ServerSocket sSocket = null;
+            int port = 12345;
+            try {
+                if(args.length == 1){port = Integer.valueOf(args[0]);} 
+                System.out.println("Porto: " + port);
+
+                sSocket = new ServerSocket(port);
+
+            } catch (IOException e) {
+                
+                System.err.println(e.getMessage());
+                System.exit(-1);
+            }
+            TintolmarketServer server = new TintolmarketServer(sSocket);
+            server.loadData();
+            try {
+                server.writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            } 
+            server.startServer();
+        } else {
+            System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe file on how to execute the server!");
+        }
+>>>>>>> Stashed changes
 	}
 
     public void startServer() {

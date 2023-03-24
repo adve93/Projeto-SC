@@ -82,6 +82,7 @@ public class Tintolmarket {
     }
 
     public static void main(String[] args) throws UnknownHostException, IOException {
+<<<<<<< Updated upstream
         String ip = args[0];
         String user = args[1];
         String password = args[2];
@@ -91,6 +92,31 @@ public class Tintolmarket {
         tintol.printMenu();
         tintol.listen();
         tintol.send();
+=======
+
+        if(args.length == 3) {
+            String ip = args[0];
+            String user = args[1];
+            String password;
+            int port = 12345;
+            password = args[2];
+            if(ip.contains(":")){
+                String[] ipPort = ip.split(":");
+                ip = ipPort[0];
+                port = Integer.valueOf(ipPort[1]);
+            }
+            System.out.println("ip: " + ip);
+            System.out.println("porto: " + port);
+            Socket cSocket = new Socket(ip, port);
+            Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
+            System.out.println("Connecting...");
+            tintol.printMenu();
+            tintol.listen();
+            tintol.send();
+        } else {
+            System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe file on how to execute the client!");
+        }
+>>>>>>> Stashed changes
     }
 
 
