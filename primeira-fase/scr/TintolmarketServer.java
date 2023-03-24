@@ -149,6 +149,13 @@ public class TintolmarketServer {
                 }
                 reader.close();
 
+                reader = new BufferedReader(new FileReader("..//serverBase//inbox.txt"));
+                while((line = reader.readLine()) != null){
+                    inbox.add(line);
+
+                }
+                reader.close();
+
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e){
@@ -219,6 +226,8 @@ public class TintolmarketServer {
                             
                             outStream.writeObject("Successful log in.");
                             outStream.flush();
+                            writeUsers();
+                            writeSaldo();
 
                         } else {
 
@@ -408,6 +417,22 @@ public class TintolmarketServer {
         }
 
         /**
+         * Writes inbox related data onto a txt file 
+         */
+        public void writeInbox() {
+            try {
+                writer = new BufferedWriter(new FileWriter("..//serverBase//inbox.txt"));
+                for(String message : inbox) {
+                    writer.write(message + "\n");
+                    writer.flush();
+                }
+                writer.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        }
+
+        /**
          * Writes the users wallet onto a txt file
          */
         public void writeSaldo() {
@@ -471,7 +496,7 @@ public class TintolmarketServer {
         }
 
         /**
-         * AFONSO FAZ
+         * Reads and sends to the user every message they had in their inbox
          * @param username
          */
         public void read(String username) {
@@ -502,6 +527,7 @@ public class TintolmarketServer {
                  inbox.remove(delete);
             }
 
+            writeInbox();
             if(!hadMessage) {
 
                 try {
@@ -518,16 +544,17 @@ public class TintolmarketServer {
         }
 
         /**
-         * AFONSO FAZ
-         * @param reciever
-         * @param sender
-         * @param message
+         * "sender" adds a "message" to the inbox array specified for the "reciever"
+         * @param reciever username of the user that will recieve the message
+         * @param sender username of the user that will send the message
+         * @param message message to be sent
          */
         public void talk(String reciever, String sender, String message) {
             for(ServerThread tr : users) {
                 if(tr.username.equals(reciever)) {
                     System.out.println(username + " has sent a messages to " + reciever + ".");
                     inbox.add(reciever + ";" + sender + ": " + message);
+                    writeInbox();
 
                     try {
                     outStream.writeObject("Message succesufuly delivered.");

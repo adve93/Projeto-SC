@@ -134,8 +134,8 @@ public class TintolmarketWine {
     }
 
     /**
-     * AFONSO FAZ
-     * @param num
+     * Sets the final value for classification
+     * @param num value to set finalClassification as
      */
     public void setFinalClassification(int num) {
         this.finalClassification = num;
