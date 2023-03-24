@@ -50,7 +50,10 @@ public class TintolmarketServer {
 
     public static void main(String[] args) {
         ServerSocket sSocket = null;
+        int port = 12345;
         try {
+            if(args.length == 1){port = Integer.valueOf(args[0]);} 
+            System.out.println("Porto: " + port);
 
 			sSocket = new ServerSocket(12345);
 

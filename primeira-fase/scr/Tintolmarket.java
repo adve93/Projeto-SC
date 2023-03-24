@@ -133,6 +133,7 @@ public class Tintolmarket {
         String ip = args[0];
         String user = args[1];
         String password;
+        int port = 12345;
         if(args.length == 3){
             password = args[2];
         } else {
@@ -141,7 +142,14 @@ public class Tintolmarket {
             password = scanner.nextLine();
             scanner.close();
         }
-        Socket cSocket = new Socket(ip, 12345);
+        if(ip.contains(":")){
+            String[] ipPort = ip.split(":");
+            ip = ipPort[0];
+            port = Integer.valueOf(ipPort[1]);
+        }
+        System.out.println("ip: " + ip);
+        System.out.println("porto: " + port);
+        Socket cSocket = new Socket(ip, port);
         Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
         System.out.println("Connecting...");
         tintol.printMenu();
