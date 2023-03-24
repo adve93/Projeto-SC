@@ -1,14 +1,18 @@
+/**
+ * Projeto de Segurança e Confiabilidade - Fase 1 2023
+ * @author Francisco Teixeira | FC56305
+ * @author Afonso Soares | FC56314
+ * @author Gonçalo Correia | FC56316
+ */
+
+//Imports for the project 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-//import java.io.PrintWriter;
-//import java.io.UnsupportedEncodingException;
-//import java.io.ObjectOutputStream.PutField;
 import java.net.ServerSocket;
 import java.net.Socket;
-//import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.io.BufferedInputStream;
@@ -17,13 +21,16 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-//import java.util.Scanner;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 
-
+/**
+ * TintolmarketServer - Responsible for the Server side of the Tintol Market,
+ * handles most of the operations between clients.
+ * 
+ */
 public class TintolmarketServer {
 
     private HashMap<String,String> userList;
@@ -35,7 +42,10 @@ public class TintolmarketServer {
     private ArrayList<String> inbox;
     private ArrayList<ServerThread> users;
 
-
+    /**
+     * TintolmarketServer constructor
+     * @param sSocket The server socket
+     */
     public TintolmarketServer(ServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
@@ -55,7 +65,7 @@ public class TintolmarketServer {
             if(args.length == 1){port = Integer.valueOf(args[0]);} 
             System.out.println("Porto: " + port);
 
-			sSocket = new ServerSocket(12345);
+			sSocket = new ServerSocket(port);
 
 		} catch (IOException e) {
             
@@ -72,6 +82,9 @@ public class TintolmarketServer {
         server.startServer();
 	}
 
+    /**
+     * Starts the server and awaits new clients to connect to it
+     */
     public void startServer() {
         try {
 
@@ -97,6 +110,9 @@ public class TintolmarketServer {
 
     }
 
+    /**
+     * Loads the data from a previous iteration of the program onto the respective objects
+     */
     public void loadData(){
             try {
                 BufferedReader reader = new BufferedReader(new FileReader("..//serverBase//users.txt"));
@@ -140,6 +156,9 @@ public class TintolmarketServer {
             }
     }
 
+    /**
+     * Each ServerThread is responsible for a single client and all the operations related to that client, extends class Thread 
+     */
     class ServerThread extends Thread {
         private Socket socket = null;
         private String username; //Identificador da thread.
@@ -149,6 +168,10 @@ public class TintolmarketServer {
         private BufferedOutputStream outBuff;
         private int saldo;
 
+        /**
+         * ServerThread constructor
+         * @param newClientSocket the client socket
+         */
         ServerThread(Socket newClientSocket) {
 			this.socket = newClientSocket;
             this.username = null;
@@ -171,7 +194,6 @@ public class TintolmarketServer {
 
                 String user = null;
 				String passwd = null;
-                //Scanner sc = new Scanner(users);
 
                 try {
 					user = (String)inStream.readObject();
@@ -236,7 +258,7 @@ public class TintolmarketServer {
                 }
                 
                
-                //Listening for msg
+                //Listening for a message 
                 String messageFromClient;
                 while(socket.isConnected()) {
 
@@ -369,6 +391,9 @@ public class TintolmarketServer {
 
         }
 
+        /**
+         * Writes user related data onto a txt file 
+         */
         public void writeUsers() {
             try {
                 writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
@@ -382,6 +407,9 @@ public class TintolmarketServer {
             }
         }
 
+        /**
+         * Writes the users wallet onto a txt file
+         */
         public void writeSaldo() {
             try {
                 writer = new BufferedWriter(new FileWriter("..//serverBase//usersSaldo.txt"));
@@ -395,6 +423,9 @@ public class TintolmarketServer {
             }
         }
 
+        /**
+         * Writes current wines in the store and witch user is selling witch wine onto a txt file
+         */
         public void writeWine() {
             try {
                 writer = new BufferedWriter(new FileWriter("..//serverBase//wines.txt"));
@@ -415,6 +446,12 @@ public class TintolmarketServer {
             }
         }
 
+        /**
+         * Closes the ServerThread
+         * @param socket the client socket
+         * @param inStream the input stream
+         * @param outStream the output stream
+         */
         public void closeEverything(Socket socket, ObjectInputStream inStream, ObjectOutputStream outStream) {
             try {
 
@@ -433,6 +470,10 @@ public class TintolmarketServer {
             }
         }
 
+        /**
+         * AFONSO FAZ
+         * @param username
+         */
         public void read(String username) {
             boolean hadMessage = false;
             ArrayList<String> toDelete = new ArrayList<>();
@@ -476,7 +517,12 @@ public class TintolmarketServer {
 
         }
 
-
+        /**
+         * AFONSO FAZ
+         * @param reciever
+         * @param sender
+         * @param message
+         */
         public void talk(String reciever, String sender, String message) {
             for(ServerThread tr : users) {
                 if(tr.username.equals(reciever)) {
@@ -501,6 +547,11 @@ public class TintolmarketServer {
         }
 
 
+        /**
+         * Adds a new wint to the store
+         * @param wineName The name of the wine
+         * @param ImgPath The name of the wine image
+         */
         public void add(String wineName, String ImgPath){
             String path  = "..//serverBase//"+ImgPath;
             TintolmarketWine wine = new TintolmarketWine(wineName, path);
@@ -546,6 +597,12 @@ public class TintolmarketServer {
             }
         }
 
+        /**
+         * Puts a certain quantity to sale of the specified wine for the specified value
+         * @param wine
+         * @param value
+         * @param quantity
+         */
         public void sell(String wine, int value, int quantity){
             if(wineExists(wine)) {
                 for(int i = 0; i <= wineList.size(); i++){
@@ -580,6 +637,10 @@ public class TintolmarketServer {
             }
         }
 
+        /**
+         * Views the information related to the specified wine
+         * @param wine Name of the wine
+         */
         public void view(String wine){
             try {
 
@@ -642,7 +703,12 @@ public class TintolmarketServer {
             }
         }
 
-
+        /**
+         * Buys a specified quantity of a wine from a seller
+         * @param wine The wine to be bought 
+         * @param seller The seller from witch to buy
+         * @param quantity The quantity of wine to buy
+         */
         public void buy(String wine, String seller, int quantity){
             try{
                 if(wineExists(wine)){
@@ -686,7 +752,11 @@ public class TintolmarketServer {
             }
         }
 
-        
+        /**
+         * Classifys the wine from 1 to 5
+         * @param wine The wine to classify
+         * @param stars The number of stars to give
+         */
         public void classify(String wine, int stars){
             int res = 0;
             if(stars < 0 || stars > 5) {
@@ -733,7 +803,11 @@ public class TintolmarketServer {
         }
 
 
-
+        /**
+         * Check if a wine exists
+         * @param wine The name of the wine
+         * @return A boolean that says if the wine exists
+         */
         private boolean wineExists(String wine){
             for(TintolmarketWine w: wineList){
                 if(w.getWinename().equals(wine)){
@@ -743,7 +817,11 @@ public class TintolmarketServer {
             return false;
         }
 
-
+        /**
+         * Gets the index of the wine specified by its name in the List of TintolmarketWines
+         * @param wine
+         * @return
+         */
         private int getIndexOfWine(String wine){
             for(int i = 0; i <= wineList.size(); i++){
                 if((wineList.get(i)).getWinename().equals(wine)){
@@ -752,6 +830,6 @@ public class TintolmarketServer {
             }
             return -1;
         }
-    } //FIM DE SERVER THREAD
+    } //End of server thread
 
 }

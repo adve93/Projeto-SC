@@ -1,3 +1,11 @@
+/**
+ * Projeto de Segurança e Confiabilidade - Fase 1 2023
+ * @author Francisco Teixeira | FC56305
+ * @author Afonso Soares | FC56314
+ * @author Gonçalo Correia | FC56316
+ */
+
+//Imports for the project 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -12,6 +20,10 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
+/**
+ * Tintolmarket - Responsible for the Client side of the Tintol Market,
+ * sends and recives messages from the server
+ */
 public class Tintolmarket {
 
     private Socket cSocket;
@@ -23,6 +35,12 @@ public class Tintolmarket {
     private String password;
     private String dataBaseString;
 
+    /**
+     * Tintolmarket Constructor 
+     * @param cSocket Client Socket
+     * @param user Client Username
+     * @param password Client Password
+     */
     public Tintolmarket(Socket cSocket, String user, String password){
         try {
             this.cSocket = cSocket;
@@ -37,10 +55,13 @@ public class Tintolmarket {
             temp.mkdir();
         } catch (IOException e){
             System.out.println("An error as ocurred!");
-            closeClient(cSocket, outStream, inStream, outBuff);
+            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
         }
     }
 
+    /**
+     * Sends messages to the server
+     */
     public void send() {
         try{
 
@@ -79,10 +100,13 @@ public class Tintolmarket {
             sc.close();
 
         } catch (IOException e){
-            closeClient(cSocket, outStream, inStream, outBuff);
+            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
         }
     }
 
+    /**
+     * Listens to messages from the server
+     */
     public void listen() {
         new Thread(new Runnable() {
             @ Override
@@ -115,20 +139,25 @@ public class Tintolmarket {
                             }
                             
                         } catch (ClassNotFoundException e1) {
-                            closeClient(cSocket, outStream, inStream, outBuff);
+                            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
                             e1.printStackTrace();
                         }
 
 
                     }
                 } catch (IOException e){
-                    closeClient(cSocket, outStream, inStream, outBuff);
+                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
                 }
             }
 
         }).start();
     }
 
+    /** 
+     * @param args
+     * @throws UnknownHostException
+     * @throws IOException
+     */
     public static void main(String[] args) throws UnknownHostException, IOException {
         String ip = args[0];
         String user = args[1];
@@ -157,8 +186,15 @@ public class Tintolmarket {
         tintol.send();
     }
 
-
-    public void closeClient(Socket cSocket, ObjectOutputStream outStream, ObjectInputStream inStream, BufferedOutputStream outBuff ){
+    /**
+     * Closes the client 
+     * @param cSocket Client socket
+     * @param outStream output stream
+     * @param inStream input stream
+     * @param outBuff output buffer
+     * @param inBuff input bufer
+     */
+    public void closeClient(Socket cSocket, ObjectOutputStream outStream, ObjectInputStream inStream, BufferedOutputStream outBuff, BufferedInputStream inBuff){
         try {
 
             if(inStream != null) {
@@ -174,11 +210,17 @@ public class Tintolmarket {
                 cSocket.close();
             }
             
+            if(inBuff != null) {
+                inBuff.close();
+            }
         } catch(IOException e) {
             e.printStackTrace();
         }
     }
 
+    /**
+     * Prints the menu wich contains the options for the client to use
+     */
     public void printMenu(){
         System.out.println("Choose an action to perform: ");
         System.out.println("add; sell; view; buy; wallet; classify; talk; read");
