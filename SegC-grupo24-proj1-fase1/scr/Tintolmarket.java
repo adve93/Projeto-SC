@@ -19,8 +19,11 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.KeyStore;
-import java.util.HashMap;
 import java.util.Scanner;
+
+import javax.net.SocketFactory;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * Tintolmarket - Responsible for the Client side of the Tintol Market,
@@ -28,7 +31,7 @@ import java.util.Scanner;
  */
 public class Tintolmarket {
 
-    private Socket cSocket;
+    private SSLSocket cSocket;
     private ObjectOutputStream outStream;
 	private ObjectInputStream inStream;
     private BufferedOutputStream outBuff;
@@ -45,7 +48,7 @@ public class Tintolmarket {
      * @param user Client Username
      * @param password Client Password
      */
-    public Tintolmarket(Socket cSocket, String user, String password){
+    public Tintolmarket(SSLSocket cSocket, String user, String password){
         try {
             this.cSocket = cSocket;
             this.outStream = new ObjectOutputStream(cSocket.getOutputStream());
@@ -177,7 +180,8 @@ public class Tintolmarket {
             }
             System.out.println("ip: " + ip);
             System.out.println("porto: " + port);
-            Socket cSocket = new Socket(ip, port);
+            SocketFactory sf = SSLSocketFactory.getDefault( );
+            SSLSocket cSocket = (SSLSocket) sf.createSocket(args[0], Integer.parseInt(args[1]));
             Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
             System.out.println("Connecting...");
             tintol.printMenu();
