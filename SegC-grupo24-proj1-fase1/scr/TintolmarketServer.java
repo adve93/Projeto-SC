@@ -15,6 +15,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import javax.net.ServerSocketFactory;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -36,17 +41,17 @@ public class TintolmarketServer {
     private HashMap<String,String> userList;
     private HashMap<String,Integer> userSaldo;
     private ArrayList<String> usernames;
-    private ServerSocket sSocket;
+    private SSLServerSocket sSocket;
     private BufferedWriter writer;
     private ArrayList<TintolmarketWine> wineList;
     private ArrayList<String> inbox;
-    private ArrayList<ServerThread> users;
+    private ArrayList<SSLSimpleServer> users;
 
     /**
      * TintolmarketServer constructor
      * @param sSocket The server socket
      */
-    public TintolmarketServer(ServerSocket sSocket) {
+    public TintolmarketServer(SSLServerSocket sSocket) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
         this.userSaldo = new HashMap<String,Integer>();
@@ -63,13 +68,14 @@ public class TintolmarketServer {
             String passwordCifra = args[1];
             String keystorePath = args[2];
             String passKeystore = args[3];
-            ServerSocket sSocket = null;
+            SSLServerSocket sSocket = null;
             int port = 12345;
             try {
                 if(args.length == 1){port = Integer.valueOf(args[0]);} 
                 System.out.println("Porto: " + port);
 
-                sSocket = new ServerSocket(port);
+                ServerSocketFactory ssf = SSLServerSocketFactory.getDefault( );
+                sSocket = (SSLServerSocket) ssf.createServerSocket(port);
 
             } catch (IOException e) {
                 
@@ -97,10 +103,8 @@ public class TintolmarketServer {
 
             while(!sSocket.isClosed()) {
 
-                Socket newClientSocket = sSocket.accept();
+                new SSLSimpleServer(sSocket.accept()).start( );
                 System.out.println("A new client is connecting. Awaiting authentication.");
-                ServerThread newServerThread = new ServerThread(newClientSocket);
-                newServerThread.start();
 
             }
             writer.close();
@@ -173,7 +177,7 @@ public class TintolmarketServer {
     /**
      * Each ServerThread is responsible for a single client and all the operations related to that client, extends class Thread 
      */
-    class ServerThread extends Thread {
+    class SSLSimpleServer extends Thread {
         private Socket socket = null;
         private String username; //Identificador da thread.
         private ObjectOutputStream outStream; //outStream e inStream passados para variaveis globais de serverThread para podermos criar metodos como read e talk
@@ -186,7 +190,7 @@ public class TintolmarketServer {
          * ServerThread constructor
          * @param newClientSocket the client socket
          */
-        ServerThread(Socket newClientSocket) {
+        SSLSimpleServer(Socket newClientSocket) {
 			this.socket = newClientSocket;
             this.username = null;
             this.saldo = 200;
@@ -557,7 +561,7 @@ public class TintolmarketServer {
          * @param message message to be sent
          */
         public void talk(String reciever, String sender, String message) {
-            for(ServerThread tr : users) {
+            for(SSLSimpleServer tr : users) {
                 if(tr.username.equals(reciever)) {
                     System.out.println(username + " has sent a messages to " + reciever + ".");
                     inbox.add(reciever + ";" + sender + ": " + message);
@@ -754,7 +758,7 @@ public class TintolmarketServer {
                             wineList.get(index).setQuantity(seller, -quantity);
                             this.saldo -= price;
                             userSaldo.put(this.username, this.saldo);
-                            for(ServerThread t: users){
+                            for(SSLSimpleServer t: users){
                                 if(t.username.equals(seller)){                                
                                     t.saldo += price;
                                     userSaldo.put(t.username, t.saldo);
