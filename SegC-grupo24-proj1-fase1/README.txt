@@ -8,11 +8,11 @@ Limitações: Pelos nossos testes o projeto não se encontra com limitações
 
 Como executar:
     Server: 
-        java TintolmarketServer <porto>
+        java -jar Server.jar <porto>
             - <porto> pode ser qualquer porto especificado, por omissão o server usa o porto 12345
             Exemplo: java TintolmarketServer 12345
     Cliente:
-        java Tintolmarket <serverAddress> <username> <password>
+        java -jar Client.jar <serverAddress> <username> <password>
             - <serverAddress> pode ser apenas um ip e por omissão o porto será 12345 ou pode se especificar o porto
                 usando ":", poranto <serverAddress> ficaria <ip>:<porto>
             - <username> o username do cliente
@@ -22,11 +22,9 @@ Como executar:
 
     Notas sobre a execução:
 
-        1 -> O Tintolmarket permite a execução sem a password ao qual depois irá aparecer uma mensagem a pedir
-                a password, podendo asssim ser introduzida a mesma
-        2 -> Ao se autenticar um novo cliente, uma nova pasta chamada de "client<username>DataBase" será criada,
+        1 -> Ao se autenticar um novo cliente, uma nova pasta chamada de "client<username>DataBase" será criada,
                 representa a base de dados que diz respeito a esse user, se quisermos fazer um "add" de um novo vinho,
                 a imagem que diz respeito a esse vinho tem de ser posta previamente nessa pasta antes de se fazer o comando
                 add.
-        3 -> O server tem uma pasta chamada "serverBase" que representa a sua base de dados, esta pasta NÃO PODE SER APAGADA já que
+        2 -> O server tem uma pasta chamada "serverBase" que representa a sua base de dados, esta pasta NÃO PODE SER APAGADA já que
                 a mesma é crucial para o programa funcionar, é onde o server guarda as suas imagens e os ficherios txt com o estado do progrma

@@ -18,6 +18,8 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.KeyStore;
+import java.util.HashMap;
 import java.util.Scanner;
 
 /**
@@ -34,7 +36,9 @@ public class Tintolmarket {
     private String user;
     private String password;
     private String dataBaseString;
-
+    private KeyStore truststore; //Um bocado unsure de o que é o truststore ainda, mas acho que é um ficheiro onde guardamos pares CHAVE PRIVADA-CHAVE PUBLICA
+                                               //Vai ser preciso então ler o ficheiro no inicio do cliente e adicionar aqui a sua informação.
+    private KeyStore keystore; //Mesma coisa que trustScore?
     /**
      * Tintolmarket Constructor 
      * @param cSocket Client Socket
@@ -159,31 +163,29 @@ public class Tintolmarket {
      * @throws IOException
      */
     public static void main(String[] args) throws UnknownHostException, IOException {
-        String ip = args[0];
-        String user = args[1];
-        String password;
-        int port = 12345;
-        if(args.length == 3){
-            password = args[2];
+        if(args.length == 5) {
+            String ip = args[0];
+            String trustStorePath = args[1]; //é necessario ir agora a este path e ler o ficheiro
+            String keystorePath = args[2]; //Mesma coisa que truststore???
+            String user = args[4];
+            String password = args[3];
+            int port = 12345;
+            if(ip.contains(":")){
+                String[] ipPort = ip.split(":");
+                ip = ipPort[0];
+                port = Integer.valueOf(ipPort[1]);
+            }
+            System.out.println("ip: " + ip);
+            System.out.println("porto: " + port);
+            Socket cSocket = new Socket(ip, port);
+            Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
+            System.out.println("Connecting...");
+            tintol.printMenu();
+            tintol.listen();
+            tintol.send();
         } else {
-            System.out.println("Password: ");
-            Scanner scanner = new Scanner(System.in);
-            password = scanner.nextLine();
-            scanner.close();
+            System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe on how to execute.");
         }
-        if(ip.contains(":")){
-            String[] ipPort = ip.split(":");
-            ip = ipPort[0];
-            port = Integer.valueOf(ipPort[1]);
-        }
-        System.out.println("ip: " + ip);
-        System.out.println("porto: " + port);
-        Socket cSocket = new Socket(ip, port);
-        Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
-        System.out.println("Connecting...");
-        tintol.printMenu();
-        tintol.listen();
-        tintol.send();
     }
 
     /**
