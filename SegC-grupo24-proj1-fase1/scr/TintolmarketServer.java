@@ -74,6 +74,8 @@ public class TintolmarketServer {
                 if(args.length == 1){port = Integer.valueOf(args[0]);} 
                 System.out.println("Porto: " + port);
 
+                System.setProperty("javax.net.ssl.keyStore", keystorePath);
+                System.setProperty("javax.net.ssl.keyStorePassword", passKeystore);
                 ServerSocketFactory ssf = SSLServerSocketFactory.getDefault( );
                 sSocket = (SSLServerSocket) ssf.createServerSocket(port);
 

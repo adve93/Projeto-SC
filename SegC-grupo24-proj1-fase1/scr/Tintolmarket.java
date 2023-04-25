@@ -19,9 +19,11 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 import java.util.Scanner;
 
 import javax.net.SocketFactory;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -168,8 +170,9 @@ public class Tintolmarket {
     public static void main(String[] args) throws UnknownHostException, IOException {
         if(args.length == 5) {
             String ip = args[0];
-            String trustStorePath = args[1]; //é necessario ir agora a este path e ler o ficheiro
-            String keystorePath = args[2]; //Mesma coisa que truststore???
+            String trustStorePath = args[1]; 
+            String trustPass = "grupo24";
+            String keystorePath = args[2];
             String user = args[4];
             String password = args[3];
             int port = 12345;
@@ -180,8 +183,16 @@ public class Tintolmarket {
             }
             System.out.println("ip: " + ip);
             System.out.println("porto: " + port);
+
+            System.setProperty("javax.net.ssl.trustStore", trustStorePath);
+            System.setProperty("javax.net.ssl.trustStorePassword", trustPass);
             SocketFactory sf = SSLSocketFactory.getDefault( );
-            SSLSocket cSocket = (SSLSocket) sf.createSocket(args[0], Integer.parseInt(args[1]));
+            SSLSocket cSocket = (SSLSocket) sf.createSocket(ip , port);
+            cSocket.startHandshake();
+            SSLSession sslSession = cSocket.getSession();
+            X509Certificate serverCert = (X509Certificate) sslSession.getPeerCertificates()[0];
+            System.out.println("Client certificate: " + serverCert.getSubjectDN());
+
             Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
             System.out.println("Connecting...");
             tintol.printMenu();
