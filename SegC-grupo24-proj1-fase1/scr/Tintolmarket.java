@@ -41,9 +41,8 @@ public class Tintolmarket {
     private String user;
     private String password;
     private String dataBaseString;
-    private KeyStore truststore; //Um bocado unsure de o que é o truststore ainda, mas acho que é um ficheiro onde guardamos pares CHAVE PRIVADA-CHAVE PUBLICA
-                                               //Vai ser preciso então ler o ficheiro no inicio do cliente e adicionar aqui a sua informação.
-    private KeyStore keystore; //Mesma coisa que trustScore?
+    private KeyStore truststore; 
+    private KeyStore keystore;
     /**
      * Tintolmarket Constructor 
      * @param cSocket Client Socket
@@ -174,7 +173,7 @@ public class Tintolmarket {
             String trustPass = "grupo24";
             String keystorePath = args[2];
             String user = args[4];
-            String password = args[3];
+            String passKeystore = args[3];
             int port = 12345;
             if(ip.contains(":")){
                 String[] ipPort = ip.split(":");
@@ -186,14 +185,17 @@ public class Tintolmarket {
 
             System.setProperty("javax.net.ssl.trustStore", trustStorePath);
             System.setProperty("javax.net.ssl.trustStorePassword", trustPass);
+            System.setProperty("javax.net.ssl.keyStore", keystorePath);
+            System.setProperty("javax.net.ssl.keyStorePassword", passKeystore);
             SocketFactory sf = SSLSocketFactory.getDefault( );
             SSLSocket cSocket = (SSLSocket) sf.createSocket(ip , port);
+
             cSocket.startHandshake();
             SSLSession sslSession = cSocket.getSession();
             X509Certificate serverCert = (X509Certificate) sslSession.getPeerCertificates()[0];
             System.out.println("Client certificate: " + serverCert.getSubjectDN());
 
-            Tintolmarket tintol = new Tintolmarket(cSocket, user, password);
+            Tintolmarket tintol = new Tintolmarket(cSocket, user, passKeystore);
             System.out.println("Connecting...");
             tintol.printMenu();
             tintol.listen();
