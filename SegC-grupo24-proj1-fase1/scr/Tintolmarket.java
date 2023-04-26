@@ -18,12 +18,21 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.cert.Certificate;
+import java.security.InvalidKeyException;
 import java.security.KeyStore;
-import java.security.cert.X509Certificate;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.Scanner;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.net.SocketFactory;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -41,15 +50,15 @@ public class Tintolmarket {
     private String user;
     private String password;
     private String dataBaseString;
-    private KeyStore truststore; 
     private KeyStore keystore;
+    private String keystorePass;
     /**
      * Tintolmarket Constructor 
      * @param cSocket Client Socket
      * @param user Client Username
      * @param password Client Password
      */
-    public Tintolmarket(SSLSocket cSocket, String user, String password){
+    public Tintolmarket(SSLSocket cSocket, String user, String password, KeyStore keyStore, String keystorePass){
         try {
             this.cSocket = cSocket;
             this.outStream = new ObjectOutputStream(cSocket.getOutputStream());
@@ -57,6 +66,8 @@ public class Tintolmarket {
             this.outBuff = new BufferedOutputStream(cSocket.getOutputStream());
             this.inBuff = new BufferedInputStream(cSocket.getInputStream());
             this.user = user;
+            this.keystore = keyStore;
+            this.keystorePass = keystorePass;
             this.password = password;
             this.dataBaseString = "..//client"+user+"DataBase//";
             File temp = new File(dataBaseString);
@@ -67,11 +78,131 @@ public class Tintolmarket {
         }
     }
 
+    /** 
+     * @param args
+     * @throws UnknownHostException
+     * @throws IOException
+     */
+    public static void main(String[] args) throws UnknownHostException, IOException {
+
+        try {
+
+            //Processing arguments
+            if(args.length == 5) {
+                String ip = args[0];
+                String trustStorePath = args[1]; 
+                String trustPass = "grupo24";
+                String keystorePath = args[2];
+                String user = args[4];
+                String passKeystore = args[3];
+                int port = 12345;
+                if(ip.contains(":")){
+                    String[] ipPort = ip.split(":");
+                    ip = ipPort[0];
+                    port = Integer.valueOf(ipPort[1]);
+                }
+                System.out.println("ip: " + ip);
+                System.out.println("porto: " + port);
+                
+                //Setting up keystore and truststore in the properties
+                System.setProperty("javax.net.ssl.trustStore", trustStorePath);
+                System.setProperty("javax.net.ssl.trustStorePassword", trustPass);
+                System.setProperty("javax.net.ssl.keyStore", keystorePath);
+                System.setProperty("javax.net.ssl.keyStorePassword", passKeystore);
+                
+                //Loading keystore
+                KeyStore keystoreTemp;
+                keystoreTemp = KeyStore.getInstance("JKS"); //MAYBE WE ALSO DONT NEED INIT
+                keystoreTemp.load(new FileInputStream(keystorePath), passKeystore.toCharArray()); //TENTAR SEM CHARARRAY    
+                
+                //Connecting to the server
+                System.out.println("Connecting...");
+                SocketFactory sf = SSLSocketFactory.getDefault( );
+                SSLSocket cSocket = (SSLSocket) sf.createSocket(ip , port);
+
+                //Create Tintolmarket object
+                Tintolmarket tintol = new Tintolmarket(cSocket, user, passKeystore, keystoreTemp, passKeystore);
+
+                //Verify connection
+                tintol.authenticateToServer();
+
+                //Create threads to send and listen for messages
+                tintol.printMenu();
+                tintol.listen();
+                tintol.send();
+
+            } else {
+                System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe on how to execute.");
+            }
+
+        } catch (KeyStoreException e) {
+            e.printStackTrace(); //TO-DO TRATAR DAS EXCESSOES
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void authenticateToServer() {
+        try {
+            
+            System.out.println("Authenticating...");
+            
+            //Loading private key
+            PrivateKey privateKey = (PrivateKey) keystore.getKey("client" + user, keystorePass.toCharArray());
+
+            //Loading certificate
+            Certificate[] certificate = keystore.getCertificateChain("client" + user);
+            
+            //First we send the username to the server
+            outStream.writeObject(user);
+            outStream.flush();
+
+            //Then wait for the servers response with a nonce
+            byte[] nonce = new byte[8];
+            nonce = (byte[])inStream.readObject(); // capaz de nao poder fazer este type cast
+
+            //We then encrypt the nonce
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.ENCRYPT_MODE, privateKey);
+            byte[] encryptedNonce = cipher.doFinal(nonce);
+
+            //Send original nonce, encrypted nonce and certiificate to the server
+            outStream.writeObject(nonce);
+            outStream.flush();
+            outStream.writeObject(encryptedNonce);
+            outStream.flush();
+            outStream.writeObject(certificate);
+            outStream.flush();
+
+            //Recieve servers response
+            String serverResponse = (String)inStream.readObject();
+            System.out.println(serverResponse);
+            if(serverResponse.equals("Authentication failed, disconnecting!")) {
+                System.out.println("Authentication with the server failed, closing client.");
+                closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+            } else if(serverResponse.equals("Something has gone wrong, disconnecting client")) {
+                System.out.println("Something went wrong with the authetication process, verify that everysthing you are sending is correct, closing client.");
+                closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+            }
+
+        //Handling exceptions
+        } catch (ClassNotFoundException | UnrecoverableKeyException | KeyStoreException | NoSuchAlgorithmException | 
+                 InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException | IOException e) 
+        {
+            System.out.println("Something has gone wrong, closing client");
+            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+            e.printStackTrace();
+        }
+        
+    }
+
     /**
      * Sends messages to the server
      */
     public void send() {
-        try{
+        try{    
 
             outStream.writeObject(user);
             outStream.writeObject(password);
@@ -161,49 +292,6 @@ public class Tintolmarket {
         }).start();
     }
 
-    /** 
-     * @param args
-     * @throws UnknownHostException
-     * @throws IOException
-     */
-    public static void main(String[] args) throws UnknownHostException, IOException {
-        if(args.length == 5) {
-            String ip = args[0];
-            String trustStorePath = args[1]; 
-            String trustPass = "grupo24";
-            String keystorePath = args[2];
-            String user = args[4];
-            String passKeystore = args[3];
-            int port = 12345;
-            if(ip.contains(":")){
-                String[] ipPort = ip.split(":");
-                ip = ipPort[0];
-                port = Integer.valueOf(ipPort[1]);
-            }
-            System.out.println("ip: " + ip);
-            System.out.println("porto: " + port);
-
-            System.setProperty("javax.net.ssl.trustStore", trustStorePath);
-            System.setProperty("javax.net.ssl.trustStorePassword", trustPass);
-            System.setProperty("javax.net.ssl.keyStore", keystorePath);
-            System.setProperty("javax.net.ssl.keyStorePassword", passKeystore);
-            SocketFactory sf = SSLSocketFactory.getDefault( );
-            SSLSocket cSocket = (SSLSocket) sf.createSocket(ip , port);
-
-            cSocket.startHandshake();
-            SSLSession sslSession = cSocket.getSession();
-            X509Certificate serverCert = (X509Certificate) sslSession.getPeerCertificates()[0];
-            System.out.println("Client certificate: " + serverCert.getSubjectDN());
-
-            Tintolmarket tintol = new Tintolmarket(cSocket, user, passKeystore);
-            System.out.println("Connecting...");
-            tintol.printMenu();
-            tintol.listen();
-            tintol.send();
-        } else {
-            System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe on how to execute.");
-        }
-    }
 
     /**
      * Closes the client 

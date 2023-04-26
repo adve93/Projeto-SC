@@ -13,9 +13,20 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
@@ -64,36 +75,39 @@ public class TintolmarketServer {
     }
 
     public static void main(String[] args) {
-        if(args.length == 4) {
-            String passwordCifra = args[1];
-            String keystorePath = args[2];
-            String passKeystore = args[3];
-            SSLServerSocket sSocket = null;
-            int port = 12345;
-            try {
+        try {
+
+            //Processing arguments
+            if(args.length == 4) {
+                String passwordCifra = args[1];
+                String keystorePath = args[2];
+                String passKeystore = args[3];
+                SSLServerSocket sSocket = null;
+                int port = 12345;
                 if(args.length == 1){port = Integer.valueOf(args[0]);} 
                 System.out.println("Porto: " + port);
 
+                //Setting up keystore in the properties
                 System.setProperty("javax.net.ssl.keyStore", keystorePath);
                 System.setProperty("javax.net.ssl.keyStorePassword", passKeystore);
                 ServerSocketFactory ssf = SSLServerSocketFactory.getDefault( );
                 sSocket = (SSLServerSocket) ssf.createServerSocket(port);
 
-            } catch (IOException e) {
+                //Create TintolmarketServer object and load any previous data
+                TintolmarketServer server = new TintolmarketServer(sSocket);
+                server.loadData();
                 
-                System.err.println(e.getMessage());
-                System.exit(-1);
-            }
-            TintolmarketServer server = new TintolmarketServer(sSocket);
-            server.loadData();
-            try {
+                //Write data about every user that has already connected to the server
                 server.writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
-            } catch (IOException e) {
-                e.printStackTrace();
-            } 
-            server.startServer();
-        } else {
-            System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe on how to execute.");
+            
+                server.startServer();
+            } else {
+                System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe on how to execute.");
+            }
+
+        } catch (IOException e) {     
+            System.err.println(e.getMessage()); //TO-DO HANDLE EXCEPTIONS
+            System.exit(-1);
         }
 	}
 
@@ -101,8 +115,10 @@ public class TintolmarketServer {
      * Starts the server and awaits new clients to connect to it
      */
     public void startServer() {
+
         try {
 
+            //Wait for a client to connect
             while(!sSocket.isClosed()) {
 
                 new SSLSimpleServer(sSocket.accept()).start( );
@@ -112,12 +128,10 @@ public class TintolmarketServer {
             writer.close();
         } catch(IOException e) {
             try {
-               
                 writer.close();
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
-            System.out.println("entrou");
             e.printStackTrace();
         }
 
@@ -180,7 +194,7 @@ public class TintolmarketServer {
      * Each ServerThread is responsible for a single client and all the operations related to that client, extends class Thread 
      */
     class SSLSimpleServer extends Thread {
-        private Socket socket = null;
+        private Socket socket = null; //Might have ti be an sslSocket
         private String username; //Identificador da thread.
         private ObjectOutputStream outStream; //outStream e inStream passados para variaveis globais de serverThread para podermos criar metodos como read e talk
         private ObjectInputStream inStream;
@@ -212,8 +226,10 @@ public class TintolmarketServer {
         public void run() {
             try {
 
+                /**
                 String user = null;
 				String passwd = null;
+
 
                 try {
 					user = (String)inStream.readObject();
@@ -278,8 +294,10 @@ public class TintolmarketServer {
                     writeUsers();
                     writeSaldo();
                 }
+                **/
+
+                authenticateUser();
                 
-               
                 //Listening for a message 
                 String messageFromClient;
                 while(socket.isConnected()) {
@@ -411,6 +429,68 @@ public class TintolmarketServer {
                 System.out.println("Client " + username + " has disconnected form TintolMarket.");
             }
 
+        }
+
+        public void authenticateUser() {
+            try {
+
+                // First we recieve the username from the user
+                String user = (String)inStream.readObject();
+                usernameExists();
+
+                // Then we generate a nonce and send it to the user
+                byte[] nonce = new byte[8];
+                new SecureRandom().nextBytes(nonce);
+                outStream.writeObject(nonce);
+                outStream.flush();
+
+                // Receive original nonce, encrypted nonce and client certificate chain from client
+                //byte[] originalNonce = new byte[8];
+                byte[] originalNonce = (byte[])inStream.readObject();
+                if(!Arrays.equals(originalNonce, nonce)){
+                    outStream.writeObject("Authentication failed, disconnecting!");
+                    outStream.flush();
+                    System.out.println("Something has gone wrong, disconnecting client");
+                };
+                //byte[] encryptedNonce = new byte[dataInputStream.available()];
+                byte[] encryptedNonce = (byte[])inStream.readObject();
+                Certificate[] clientCer = (Certificate[])inStream.readObject();
+
+                // Get the public key from the certificate
+                X509Certificate clientCert = (X509Certificate) clientCer[0];
+                PublicKey publicKey = clientCert.getPublicKey();
+
+                // Verify with the public key if the encrypted nonce is correct
+                Cipher cipher = Cipher.getInstance("RSA");
+                cipher.init(Cipher.DECRYPT_MODE, publicKey);
+                byte[] decryptedNonce = cipher.doFinal(encryptedNonce);
+                if (!Arrays.equals(decryptedNonce, nonce)) {
+                    outStream.writeObject("Authentication failed, disconnecting!");
+                    outStream.flush();
+                    System.out.println("Something has gone wrong, disconnecting client");
+                };
+                
+                // If every condition is met, add client to the server, to the users.txt file and send positive response
+                this.username = user;
+                usernames.add(user);
+                userSaldo.put(user, this.saldo);
+                System.out.println("New user " + user + " created.");
+                users.add(this);
+                outStream.writeObject("User authenticated!");
+                outStream.flush();
+
+            } catch (ClassNotFoundException | NoSuchAlgorithmException | NoSuchPaddingException | IOException | 
+                     InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) 
+            {
+                System.out.println("Something has gone wrong, disconnecting client");
+                closeEverything(socket, inStream, outStream);
+                e.printStackTrace();
+            }
+
+        }
+
+        private void usernameExists() {
+            //TO-DO VERIFICAR SE ESTE USERNAME JA EXISTE
         }
 
         /**
