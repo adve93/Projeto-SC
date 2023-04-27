@@ -24,9 +24,12 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Scanner;
 
 import javax.crypto.BadPaddingException;
@@ -49,9 +52,9 @@ public class Tintolmarket {
     private BufferedOutputStream outBuff;
     private BufferedInputStream inBuff;
     private String user;
-    private String password;
     private String dataBaseString;
     private KeyStore keystore;
+    private KeyStore truststore;
     private String keystorePass;
     /**
      * Tintolmarket Constructor 
@@ -59,7 +62,7 @@ public class Tintolmarket {
      * @param user Client Username
      * @param password Client Password
      */
-    public Tintolmarket(SSLSocket cSocket, String user, String password, KeyStore keyStore, String keystorePass){
+    public Tintolmarket(SSLSocket cSocket, String user, KeyStore keyStore, String keystorePass, KeyStore truststore){
         try {
             this.cSocket = cSocket;
             this.outStream = new ObjectOutputStream(cSocket.getOutputStream());
@@ -67,9 +70,9 @@ public class Tintolmarket {
             this.outBuff = new BufferedOutputStream(cSocket.getOutputStream());
             this.inBuff = new BufferedInputStream(cSocket.getInputStream());
             this.user = user;
+            this.truststore = truststore;
             this.keystore = keyStore;
             this.keystorePass = keystorePass;
-            this.password = password;
             this.dataBaseString = "..//client"+user+"DataBase//";
             File temp = new File(dataBaseString);
             temp.mkdir();
@@ -115,6 +118,11 @@ public class Tintolmarket {
                 KeyStore keystoreTemp;
                 keystoreTemp = KeyStore.getInstance("JKS"); //MAYBE WE ALSO DONT NEED INIT
                 keystoreTemp.load(new FileInputStream(keystorePath), passKeystore.toCharArray()); //TENTAR SEM CHARARRAY    
+
+                //Loading truststore
+                KeyStore truststoreTemp;
+                truststoreTemp = KeyStore.getInstance("JKS"); //MAYBE WE ALSO DONT NEED INIT
+                truststoreTemp.load(new FileInputStream(trustStorePath), trustPass.toCharArray()); //TENTAR SEM CHARARRAY    
                 
                 //Connecting to the server
                 System.out.println("Connecting...");
@@ -122,7 +130,7 @@ public class Tintolmarket {
                 SSLSocket cSocket = (SSLSocket) sf.createSocket(ip , port);
 
                 //Create Tintolmarket object
-                Tintolmarket tintol = new Tintolmarket(cSocket, user, passKeystore, keystoreTemp, passKeystore);
+                Tintolmarket tintol = new Tintolmarket(cSocket, user, keystoreTemp, passKeystore, truststoreTemp);
 
                 //Verify connection
                 if(tintol.authenticateToServer()) {
@@ -257,34 +265,94 @@ public class Tintolmarket {
             while(cSocket.isConnected()){
                 String command = sc.nextLine();
                 String[] temp = command.split(" ");
+
+                // Send add command
                 if(temp[0].equals("add") || temp[0].equals("a")){ 
-                    File f = new File(dataBaseString+temp[2]);
-                    if(f.exists() && !f.isDirectory()) { 
-                        outStream.writeObject(command);
-                        outStream.flush(); 
-                        FileInputStream fin = new FileInputStream(f);
-                        InputStream input = new BufferedInputStream(fin);
-                        outStream.writeObject(f.length());
-                        outStream.flush();
-                        byte[] buffer = new byte[1024];
-                        int bytesRead = 0;
-                        while((bytesRead = input.read(buffer)) != -1){                     
-                            outBuff.write(buffer, 0, bytesRead);
+                    
+                    if(temp.length == 3) {
+
+                        File f = new File(dataBaseString+temp[2]);
+                        if(f.exists() && !f.isDirectory()) { 
+                            outStream.writeObject(command);
+                            outStream.flush(); 
+                            FileInputStream fin = new FileInputStream(f);
+                            InputStream input = new BufferedInputStream(fin);
+                            outStream.writeObject(f.length());
+                            outStream.flush();
+                            byte[] buffer = new byte[1024];
+                            int bytesRead = 0;
+                            while((bytesRead = input.read(buffer)) != -1){                     
+                                outBuff.write(buffer, 0, bytesRead);
+                            }
+                            input.close();
+                            outBuff.flush();
+                        } else {
+                            System.out.println("Verify if the path to the image is correct " + dataBaseString);
                         }
-                        input.close();
-                        outBuff.flush();
+
                     } else {
-                        System.out.println("Verify if the path to the image is correct " + dataBaseString);
+
+                        System.out.println("add failed due to wrong number of parameters. Be sure to use add 'wine' 'image'.");
+
                     }
-                } else {
+                    
+
+                // Send talk command
+                } else if(temp[0].equals("talk") || temp[0].equals("t")) {
+
+                    if(temp.length == 3) {
+
+                        //Copy information
+                        String commandTemp = String.copyValueOf(temp[0].toCharArray());
+                        String recieverTemp = String.copyValueOf(temp[1].toCharArray());
+                        String messageTemp = String.copyValueOf(temp[2].toCharArray());
+
+                        // Get certificate for the given user
+                        X509Certificate certificate = (X509Certificate) truststore.getCertificate("client" + recieverTemp);
+
+                        // Get the public key of said user's certificate
+                        PublicKey publicKey = certificate.getPublicKey();
+
+                        // Change message from a string to a byte[]
+                        byte[] byteMsg = messageTemp.getBytes("UTF-8");
+
+                        // Encrypt message
+                        Cipher cipher = Cipher.getInstance("RSA");
+                        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+                        byte[] byteEncryptedMsg = cipher.doFinal(byteMsg);
+
+                        // Send the command to server
+                        outStream.writeObject(commandTemp + " " + recieverTemp);
+                        outStream.flush(); 
+
+                        // Send the encrypted message size to server
+                        outStream.writeObject(byteEncryptedMsg.length);
+                        outStream.flush(); 
+
+                        // Send the encrypted message to server
+                        outBuff.write(byteEncryptedMsg);
+                        outBuff.flush(); 
+
+                    } else {
+
+                        System.out.println("talk failed due to wrong number of parameters. Be sure to use talk 'user' 'message'.");
+
+                    }
+
+                // Send other commands
+                }else {
                     outStream.writeObject(command);
                     outStream.flush();
                 }
             }
             sc.close();
 
-        } catch (IOException e){
+        } catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | 
+                 InvalidKeyException | IllegalBlockSizeException | BadPaddingException e){
             closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+        } catch (KeyStoreException e) {
+            System.out.println("Tried to send a message to a user not registered in the server.");
+            e.printStackTrace();
         }
     }
 
@@ -318,11 +386,36 @@ public class Tintolmarket {
                                     fileSize -= bytesRead;
                                 }
                                 output.close();
+                            } else if(messageFromServer.equals("readFlag")) {
+
+                                // Saves the message, with format UsersplitEncodedBytes locally
+                                String msg = (String)inStream.readObject();
+                                String[] splitMsg = msg.split("split");
+
+                                // Decode the bytes
+                                byte[] byteMsg = Base64.getDecoder().decode(splitMsg[1]);
+
+                                // Loading private key
+                                PrivateKey privateKey = (PrivateKey) keystore.getKey("client" + user, keystorePass.toCharArray());
+
+                                // Decrypts the msg with private key
+                                Cipher cipher = Cipher.getInstance("RSA");
+                                cipher.init(Cipher.DECRYPT_MODE, privateKey);
+                                byte[] byteDecryptedMsg = cipher.doFinal(byteMsg);
+
+                                // Change message back from byte[] to a string
+                                String decryptedMsg = new String(byteDecryptedMsg, "UTF-8");
+
+                                //Print out decrypted message and the sender's name
+                                System.out.println(splitMsg[0] + ": " + decryptedMsg);
+
+
                             } else{
                                 System.out.println(messageFromServer);
                             }
                             
-                        } catch (ClassNotFoundException e1) {
+                        } catch (ClassNotFoundException | UnrecoverableKeyException | KeyStoreException | NoSuchAlgorithmException |
+                                 NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e1) {
                             closeClient(cSocket, outStream, inStream, outBuff, inBuff);
                             e1.printStackTrace();
                         }

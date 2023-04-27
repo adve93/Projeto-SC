@@ -23,6 +23,7 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 
 import javax.crypto.BadPaddingException;
@@ -317,8 +318,9 @@ public class TintolmarketServer {
 
                             case "talk":
                             case "t":
-                                if(splitMessage.length == 3) {
-                                    talk(splitMessage[1], this.username, splitMessage[2]);
+                                if(splitMessage.length == 2) {
+                                    System.out.println(splitMessage[1]);
+                                    talk(splitMessage[1], this.username);
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("talk failed due to wrong number of parameters. Be sure to use talk 'user' 'message'.");
@@ -475,6 +477,7 @@ public class TintolmarketServer {
 
                     // If every condition is met, log in the client
                     this.username = user;
+                    users.add(this);
                     System.out.println("User " + username + " logged in successful."); 
                     outStream.writeObject("Authentication successful!");
                     outStream.flush();
@@ -599,12 +602,15 @@ public class TintolmarketServer {
 
             for(String message : inbox) {
 
-                String[] toSend = message.split(";", 2);
+                String[] toSend = message.split("split", 2);
 
                 if(toSend[0].equals(this.username)) {
                     hadMessage = true;
                     toDelete.add(message);
                     try {
+
+                        outStream.writeObject("readFlag");
+                        outStream.flush();
 
                         outStream.writeObject(toSend[1]);
                         outStream.flush();
@@ -643,26 +649,33 @@ public class TintolmarketServer {
          * @param sender username of the user that will send the message
          * @param message message to be sent
          */
-        public void talk(String reciever, String sender, String message) {
-            for(SSLSimpleServer tr : users) {
-                if(tr.username.equals(reciever)) {
-                    System.out.println(username + " has sent a messages to " + reciever + ".");
-                    inbox.add(reciever + ";" + sender + ": " + message);
-                    writeInbox();
-
-                    try {
-                    outStream.writeObject("Message succesufuly delivered.");
-                    } catch (IOException e) {
-                    e.printStackTrace();
-                    }
-                    return;
-                }
-            } 
-            System.out.println(username + " tried to send a messages to a user that does not exist.");
-
+        public void talk(String reciever, String sender) {
+            
             try {
+
+                // Recieve encrypted message size and encrypted message 
+                int encryptedMessageLength = (int)inStream.readObject();
+                byte[] byteEncryptedMessage =  new byte[encryptedMessageLength];
+                inBuff.read(byteEncryptedMessage);
+
+                // Encode the bytes
+                String encodedBytes = Base64.getEncoder().encodeToString(byteEncryptedMessage);
+
+                for(SSLSimpleServer tr : users) {
+                    if(tr.username.contains(reciever)) {
+                        System.out.println(username + " has sent a messages to " + reciever + ".");
+                        inbox.add(reciever + "split" + sender + "split" + encodedBytes);
+                        writeInbox();
+                        outStream.writeObject("Message added to inbox.");
+                        outStream.flush();
+                        return;
+                    }
+                } 
+                System.out.println(username + " tried to send a messages to a user that does not exist.");
+
+         
                 outStream.writeObject("Introduced a user that does not exist.");
-            } catch (IOException e) {
+            } catch (ClassNotFoundException | IOException e) {
                 e.printStackTrace();
             }
         }
