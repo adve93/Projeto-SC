@@ -37,6 +37,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -422,7 +423,7 @@ public class TintolmarketServer {
                     // If every condition is met, register client
                     this.username = user;
                     usernames.add(username);
-                    userList.put(username, "..\\client" + username + "DataBase\\cert" + username + ".cer");
+                    userList.put(username, "..\\serverBase\\cert" + username + ".cer");
                     userSaldo.put(username, this.saldo);
                     System.out.println("New user " + username + " registered.");
                     users.add(this);
@@ -430,6 +431,13 @@ public class TintolmarketServer {
                     outStream.flush();
                     writeUsers();
                     writeSaldo();
+
+                    // Save user certificate in server base
+                    FileOutputStream fout = new FileOutputStream("..\\serverBase\\cert" + username + ".cer");
+                    CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                    Certificate cert = cf.generateCertificate(new ByteArrayInputStream(clientCer[0].getEncoded()));
+                    fout.write(cert.getEncoded());
+                    fout.close();
                     
                 } else {
 
