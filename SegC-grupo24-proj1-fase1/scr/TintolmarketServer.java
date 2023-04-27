@@ -14,6 +14,8 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -145,7 +147,7 @@ public class TintolmarketServer {
                 BufferedReader reader = new BufferedReader(new FileReader("..//serverBase//users.txt"));
                 String line;
                 while((line = reader.readLine()) != null){
-                    String[] data = line.split(" ");
+                    String[] data = line.split(":");
                     usernames.add(data[0]);
                     userList.put(data[0], data[1]);
                 }
@@ -225,76 +227,6 @@ public class TintolmarketServer {
 
         public void run() {
             try {
-
-                /**
-                String user = null;
-				String passwd = null;
-
-
-                try {
-					user = (String)inStream.readObject();
-					passwd = (String)inStream.readObject();
-                    if(userSaldo.containsKey(user)) {
-                        this.saldo = userSaldo.get(user);
-                    }
-
-				} catch (ClassNotFoundException e1) {
-                    closeEverything(socket, inStream, outStream);
-					e1.printStackTrace();
-
-				}
-
-                //Authentication Handling
-                if(userList.size() != 0) {
-                    
-                    if(userList.containsKey(user)) {
-
-                        if(userList.get(user).equals(passwd)) {                     
-                            username = user;
-                            System.out.println("User " + user + " logged in successful.");
-                            
-                            outStream.writeObject("Successful log in.");
-                            outStream.flush();
-                            writeUsers();
-                            writeSaldo();
-
-                        } else {
-
-                            outStream.writeObject("You introduced the wrong password. Disconnecting!");
-                            outStream.flush();
-                            closeEverything(socket, inStream, outStream);
-                            System.out.println("Client introduced wrong credentials, has been disconnected.");
-                            return;
-
-                        }
-
-                    } else {
-
-                        usernames.add(user);
-                        userList.put(user, passwd);
-                        userSaldo.put(user, this.saldo);
-                        username = user;
-                        System.out.println("New user " + user + " created.");
-                        outStream.writeObject("Successful log in.");
-                        outStream.flush();
-                        users.add(this);
-                        writeUsers();
-                        writeSaldo();
-                    }
-
-                } else {
-                    usernames.add(user);
-                    userList.put(user, passwd);
-                    userSaldo.put(user, this.saldo);
-                    username = user;
-                    System.out.println("New user " + user + " created.");
-                    outStream.writeObject("Successful log in.");
-                    outStream.flush();
-                    users.add(this);
-                    writeUsers();
-                    writeSaldo();
-                }
-                **/
 
                 authenticateUser();
                 
@@ -434,64 +366,125 @@ public class TintolmarketServer {
         public void authenticateUser() {
             try {
 
-                // First we recieve the username from the user
+                // Recieving the username from the user
                 String user = (String)inStream.readObject();
-                usernameExists();
 
-                // Then we generate a nonce and send it to the user
+                // Generating a nonce and sending it to the user
                 byte[] nonce = new byte[8];
                 new SecureRandom().nextBytes(nonce);
-                outStream.writeObject(nonce);
-                outStream.flush();
+                outBuff.write(nonce, 0, 8);
+                outBuff.flush();
 
-                // Receive original nonce, encrypted nonce and client certificate chain from client
-                //byte[] originalNonce = new byte[8];
-                byte[] originalNonce = (byte[])inStream.readObject();
-                if(!Arrays.equals(originalNonce, nonce)){
-                    outStream.writeObject("Authentication failed, disconnecting!");
+                // Verifying if the user is already registered
+                if(!usernames.contains(user)) {
+
+                    //Send isRegistered flag
+                    outStream.writeObject(false);
                     outStream.flush();
-                    System.out.println("Something has gone wrong, disconnecting client");
-                };
-                //byte[] encryptedNonce = new byte[dataInputStream.available()];
-                byte[] encryptedNonce = (byte[])inStream.readObject();
-                Certificate[] clientCer = (Certificate[])inStream.readObject();
 
-                // Get the public key from the certificate
-                X509Certificate clientCert = (X509Certificate) clientCer[0];
-                PublicKey publicKey = clientCert.getPublicKey();
+                    // Receive original nonce and verify if it matches generated nonce
+                    byte[] originalNonce = new byte[8];
+                    inBuff.read(originalNonce);
+                    if(!Arrays.equals(originalNonce, nonce)){
+                        outStream.writeObject("Authentication failed, generated nonce and original nonce don't match, disconnecting!");
+                        outStream.flush();
+                        System.out.println("Authentication failed, generated nonce and original nonce don't match, disconnecting client");
+                        closeEverything(socket, inStream, outStream);
+                        return;
+                    };
 
-                // Verify with the public key if the encrypted nonce is correct
-                Cipher cipher = Cipher.getInstance("RSA");
-                cipher.init(Cipher.DECRYPT_MODE, publicKey);
-                byte[] decryptedNonce = cipher.doFinal(encryptedNonce);
-                if (!Arrays.equals(decryptedNonce, nonce)) {
-                    outStream.writeObject("Authentication failed, disconnecting!");
+                    // Receive encrypted nonce size and encrypted nonce 
+                    int encryptedNonceLength = (int)inStream.readObject();
+                    byte[] encryptedNonce =  new byte[encryptedNonceLength];
+                    inBuff.read(encryptedNonce);
+
+                    // Receive client certificate chain
+                    Certificate[] clientCer = (Certificate[])inStream.readObject();
+
+                    // Get the public key from the certificate
+                    X509Certificate clientCert = (X509Certificate) clientCer[0];
+                    PublicKey publicKey = clientCert.getPublicKey();
+
+                    // Verify with the public key if the encrypted nonce is correct
+                    Cipher cipher = Cipher.getInstance("RSA");
+                    cipher.init(Cipher.DECRYPT_MODE, publicKey);
+                    byte[] decryptedNonce = cipher.doFinal(encryptedNonce);
+
+                    // Send error message if decryption failed
+                    if (!Arrays.equals(decryptedNonce, nonce)) {
+                        outStream.writeObject("Authentication failed, encrypted nonce doesn't match nonce, disconnecting!");
+                        outStream.flush();
+                        System.out.println("Authentication failed, encrypted nonce doesn't match nonce, disconnecting client");
+                        closeEverything(socket, inStream, outStream);
+                        return;
+                    };
+                    
+                    // If every condition is met, register client
+                    this.username = user;
+                    usernames.add(username);
+                    userList.put(username, "..\\client" + username + "DataBase\\cert" + username + ".cer");
+                    userSaldo.put(username, this.saldo);
+                    System.out.println("New user " + username + " registered.");
+                    users.add(this);
+                    outStream.writeObject("Registered successfully!");
                     outStream.flush();
-                    System.out.println("Something has gone wrong, disconnecting client");
-                };
-                
-                // If every condition is met, add client to the server, to the users.txt file and send positive response
-                this.username = user;
-                usernames.add(user);
-                userSaldo.put(user, this.saldo);
-                System.out.println("New user " + user + " created.");
-                users.add(this);
-                outStream.writeObject("User authenticated!");
-                outStream.flush();
+                    writeUsers();
+                    writeSaldo();
+                    
+                } else {
+
+                    //Send isRegistered flag
+                    outStream.writeObject(true);
+                    outStream.flush();
+
+                    // Receive encrypted nonce size and encrypted nonce 
+                    int encryptedNonceLength = (int)inStream.readObject();
+                    byte[] encryptedNonce =  new byte[encryptedNonceLength];
+                    inBuff.read(encryptedNonce);
+
+                    // Get client certificate chain
+                    String certificatePath = userList.get(user);     
+                    FileInputStream inputStream = new FileInputStream(certificatePath);
+                    CertificateFactory cf = CertificateFactory.getInstance("X.509");    
+                    X509Certificate certificate = (X509Certificate) cf.generateCertificate(inputStream);
+                    
+                    // Get public key from certificate
+                    PublicKey publicKey = certificate.getPublicKey();
+
+                    // Verify with the public key if the encrypted nonce is correct
+                    Cipher cipher = Cipher.getInstance("RSA");
+                    cipher.init(Cipher.DECRYPT_MODE, publicKey);
+                    byte[] decryptedNonce = cipher.doFinal(encryptedNonce);
+
+                    // Send error message if decryption failed
+                    if (!Arrays.equals(decryptedNonce, nonce)) {
+                        outStream.writeObject("Authentication failed, encrypted nonce doesn't match nonce, disconnecting!");
+                        outStream.flush();
+                        System.out.println("Authentication failed, encrypted nonce doesn't match nonce, disconnecting client");
+                        closeEverything(socket, inStream, outStream);
+                        return;
+                    };
+
+                    // If every condition is met, log in the client
+                    this.username = user;
+                    System.out.println("User " + username + " logged in successful."); 
+                    outStream.writeObject("Authentication successful!");
+                    outStream.flush();
+                    writeUsers();
+                    writeSaldo();
+
+
+                }
 
             } catch (ClassNotFoundException | NoSuchAlgorithmException | NoSuchPaddingException | IOException | 
-                     InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) 
+                     InvalidKeyException | IllegalBlockSizeException | BadPaddingException | CertificateException e) 
             {
                 System.out.println("Something has gone wrong, disconnecting client");
-                closeEverything(socket, inStream, outStream);
                 e.printStackTrace();
-            }
+            } 
 
         }
 
-        private void usernameExists() {
-            //TO-DO VERIFICAR SE ESTE USERNAME JA EXISTE
-        }
 
         /**
          * Writes user related data onto a txt file 
@@ -500,7 +493,7 @@ public class TintolmarketServer {
             try {
                 writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
                 for(String tag : usernames) {
-                    writer.write(tag + " " + userList.get(tag) + "\n");
+                    writer.write(tag + ":" + userList.get(tag) + "\n");
                     writer.flush();
                 }
                 writer.close();

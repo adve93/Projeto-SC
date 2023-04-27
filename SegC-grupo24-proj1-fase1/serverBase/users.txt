@@ -1,0 +1,2 @@
+Afonso:..\clientAfonsoDataBase\certAfonso.cer
+Francisco:..\clientFranciscoDataBase\certFrancisco.cer

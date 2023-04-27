@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.util.Arrays;
 import java.util.Scanner;
 
 import javax.crypto.BadPaddingException;
@@ -124,13 +125,14 @@ public class Tintolmarket {
                 Tintolmarket tintol = new Tintolmarket(cSocket, user, passKeystore, keystoreTemp, passKeystore);
 
                 //Verify connection
-                tintol.authenticateToServer();
+                if(tintol.authenticateToServer()) {
 
-                //Create threads to send and listen for messages
-                tintol.printMenu();
-                tintol.listen();
-                tintol.send();
-
+                    //Create threads to send and listen for messages
+                    tintol.printMenu();
+                    tintol.listen();
+                    tintol.send();
+                }
+                
             } else {
                 System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe on how to execute.");
             }
@@ -144,7 +146,7 @@ public class Tintolmarket {
         }
     }
 
-    public void authenticateToServer() {
+    public boolean authenticateToServer() {
         try {
             
             System.out.println("Authenticating...");
@@ -155,37 +157,83 @@ public class Tintolmarket {
             //Loading certificate
             Certificate[] certificate = keystore.getCertificateChain("client" + user);
             
-            //First we send the username to the server
+            //Send the username to the server
             outStream.writeObject(user);
             outStream.flush();
 
-            //Then wait for the servers response with a nonce
+            //Wait for the server response with a nonce
             byte[] nonce = new byte[8];
-            nonce = (byte[])inStream.readObject(); // capaz de nao poder fazer este type cast
-
-            //We then encrypt the nonce
+            inBuff.read(nonce);
+            
+            //Encrypt the nonce
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.ENCRYPT_MODE, privateKey);
             byte[] encryptedNonce = cipher.doFinal(nonce);
 
-            //Send original nonce, encrypted nonce and certiificate to the server
-            outStream.writeObject(nonce);
-            outStream.flush();
-            outStream.writeObject(encryptedNonce);
-            outStream.flush();
-            outStream.writeObject(certificate);
-            outStream.flush();
+            //Is registered?
+            boolean isRegistered = (boolean)inStream.readObject();
+            if(!isRegistered) {
 
-            //Recieve servers response
-            String serverResponse = (String)inStream.readObject();
-            System.out.println(serverResponse);
-            if(serverResponse.equals("Authentication failed, disconnecting!")) {
-                System.out.println("Authentication with the server failed, closing client.");
-                closeClient(cSocket, outStream, inStream, outBuff, inBuff);
-            } else if(serverResponse.equals("Something has gone wrong, disconnecting client")) {
-                System.out.println("Something went wrong with the authetication process, verify that everysthing you are sending is correct, closing client.");
-                closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                //Send original nonce, encrypted nonce size, encrypted nonce and certiificate to the server
+                outBuff.write(nonce);
+                outBuff.flush();
+                outStream.writeObject(encryptedNonce.length);
+                outStream.flush();
+                outBuff.write(encryptedNonce);
+                outBuff.flush();
+                outStream.writeObject(certificate);
+                outStream.flush();
+
+                //Recieve servers response
+                String serverResponse = (String)inStream.readObject();
+                if(serverResponse.equals("Authentication failed, generated nonce and original nonce don't match, disconnecting!")) {
+                    System.out.println(serverResponse);
+                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    return false;
+                } else if(serverResponse.equals("Authentication failed, encrypted nonce doesn't match nonce, disconnecting client")) {
+                    System.out.println(serverResponse);
+                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    return false;
+                } else if(serverResponse.equals("Something has gone wrong, disconnecting client")) {
+                    System.out.println("Something went wrong with the authetication process, verify that everysthing you are sending is correct, closing client.");
+                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    return false;
+                } else {
+                    System.out.println(serverResponse);
+                    return true;
+                }
+
+            } else {
+
+                //Send encrypted nonce size, encrypted nonce
+                outStream.writeObject(encryptedNonce.length);
+                outStream.flush();
+                outBuff.write(encryptedNonce);
+                outBuff.flush();
+
+                //Recieve servers response
+                String serverResponse = (String)inStream.readObject();
+                if(serverResponse.equals("Authentication failed, generated nonce and original nonce don't match, disconnecting!")) {
+                    System.out.println(serverResponse);
+                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    return false;
+                } else if(serverResponse.equals("Authentication failed, encrypted nonce doesn't match nonce, disconnecting client")) {
+                    System.out.println(serverResponse);
+                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    return false;
+                } else if(serverResponse.equals("Something has gone wrong, disconnecting client")) {
+                    System.out.println("Something went wrong with the authetication process, verify that everysthing you are sending is correct, closing client.");
+                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    return false;
+                } else {
+                    System.out.println(serverResponse);
+                    return true;
+                }
+
             }
+
+            
+            
 
         //Handling exceptions
         } catch (ClassNotFoundException | UnrecoverableKeyException | KeyStoreException | NoSuchAlgorithmException | 
@@ -194,6 +242,7 @@ public class Tintolmarket {
             System.out.println("Something has gone wrong, closing client");
             closeClient(cSocket, outStream, inStream, outBuff, inBuff);
             e.printStackTrace();
+            return false;
         }
         
     }
@@ -203,10 +252,6 @@ public class Tintolmarket {
      */
     public void send() {
         try{    
-
-            outStream.writeObject(user);
-            outStream.writeObject(password);
-            outStream.flush();
 
             Scanner sc = new Scanner(System.in);
             while(cSocket.isConnected()){
@@ -229,7 +274,7 @@ public class Tintolmarket {
                         input.close();
                         outBuff.flush();
                     } else {
-                        System.out.println("Certifiquese que a imagem que desenha mandar se encontra em " + dataBaseString);
+                        System.out.println("Verify if the path to the image is correct " + dataBaseString);
                     }
                 } else {
                     outStream.writeObject(command);
