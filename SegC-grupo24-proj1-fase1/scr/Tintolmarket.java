@@ -10,14 +10,13 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.security.cert.Certificate;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
@@ -28,8 +27,8 @@ import java.security.PublicKey;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.Base64;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 import javax.crypto.BadPaddingException;
@@ -60,7 +59,9 @@ public class Tintolmarket {
      * Tintolmarket Constructor 
      * @param cSocket Client Socket
      * @param user Client Username
-     * @param password Client Password
+     * @param keyStore Client keystore
+     * @param keystorePass Client keystore password
+     * @param truststore Shared clients truststore
      */
     public Tintolmarket(SSLSocket cSocket, String user, KeyStore keyStore, String keystorePass, KeyStore truststore){
         try {
@@ -78,16 +79,14 @@ public class Tintolmarket {
             temp.mkdir();
         } catch (IOException e){
             System.out.println("An error as ocurred!");
-            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+            closeClient();
         }
     }
 
     /** 
      * @param args
-     * @throws UnknownHostException
-     * @throws IOException
      */
-    public static void main(String[] args) throws UnknownHostException, IOException {
+    public static void main(String[] args)  {
 
         try {
 
@@ -116,13 +115,13 @@ public class Tintolmarket {
                 
                 //Loading keystore
                 KeyStore keystoreTemp;
-                keystoreTemp = KeyStore.getInstance("JKS"); //MAYBE WE ALSO DONT NEED INIT
-                keystoreTemp.load(new FileInputStream(keystorePath), passKeystore.toCharArray()); //TENTAR SEM CHARARRAY    
+                keystoreTemp = KeyStore.getInstance("JKS");
+                keystoreTemp.load(new FileInputStream(keystorePath), passKeystore.toCharArray());   
 
                 //Loading truststore
                 KeyStore truststoreTemp;
-                truststoreTemp = KeyStore.getInstance("JKS"); //MAYBE WE ALSO DONT NEED INIT
-                truststoreTemp.load(new FileInputStream(trustStorePath), trustPass.toCharArray()); //TENTAR SEM CHARARRAY    
+                truststoreTemp = KeyStore.getInstance("JKS");
+                truststoreTemp.load(new FileInputStream(trustStorePath), trustPass.toCharArray()); 
                 
                 //Connecting to the server
                 System.out.println("Connecting...");
@@ -146,14 +145,29 @@ public class Tintolmarket {
             }
 
         } catch (KeyStoreException e) {
-            e.printStackTrace(); //TO-DO TRATAR DAS EXCESSOES
+            e.printStackTrace();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (CertificateException e) {
             e.printStackTrace();
+        } catch(NoSuchElementException e) {
+            return;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
+    /**
+     * Handles the processing of user authentication with the server.
+     * When the user connects to the server, the server will send a nonce back to the user.
+     * The user must then encrypt the nonce with it's private key and send back to the server
+     * the original nonce, the encrypted nonce and their certificate.
+     * After this the server will respond with authentication succesful or not.
+     * 
+     * @return if authentication succeded
+     */
     public boolean authenticateToServer() {
         try {
             
@@ -196,15 +210,15 @@ public class Tintolmarket {
                 String serverResponse = (String)inStream.readObject();
                 if(serverResponse.equals("Authentication failed, generated nonce and original nonce don't match, disconnecting!")) {
                     System.out.println(serverResponse);
-                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
                     return false;
                 } else if(serverResponse.equals("Authentication failed, encrypted nonce doesn't match nonce, disconnecting client")) {
                     System.out.println(serverResponse);
-                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
                     return false;
                 } else if(serverResponse.equals("Something has gone wrong, disconnecting client")) {
                     System.out.println("Something went wrong with the authetication process, verify that everysthing you are sending is correct, closing client.");
-                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
                     return false;
                 } else {
                     System.out.println(serverResponse);
@@ -223,15 +237,15 @@ public class Tintolmarket {
                 String serverResponse = (String)inStream.readObject();
                 if(serverResponse.equals("Authentication failed, generated nonce and original nonce don't match, disconnecting!")) {
                     System.out.println(serverResponse);
-                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
                     return false;
                 } else if(serverResponse.equals("Authentication failed, encrypted nonce doesn't match nonce, disconnecting client")) {
                     System.out.println(serverResponse);
-                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
                     return false;
                 } else if(serverResponse.equals("Something has gone wrong, disconnecting client")) {
                     System.out.println("Something went wrong with the authetication process, verify that everysthing you are sending is correct, closing client.");
-                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
                     return false;
                 } else {
                     System.out.println(serverResponse);
@@ -248,7 +262,7 @@ public class Tintolmarket {
                  InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException | IOException e) 
         {
             System.out.println("Something has gone wrong, closing client");
-            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+            closeClient();
             e.printStackTrace();
             return false;
         }
@@ -349,10 +363,12 @@ public class Tintolmarket {
 
         } catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | 
                  InvalidKeyException | IllegalBlockSizeException | BadPaddingException e){
-            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
         } catch (KeyStoreException e) {
             System.out.println("Tried to send a message to a user not registered in the server.");
-            e.printStackTrace();
+        } catch (NullPointerException e) {
+            System.out.println("Tried to send a message to a user not registered in the server.");
+            send();
         }
     }
 
@@ -416,14 +432,14 @@ public class Tintolmarket {
                             
                         } catch (ClassNotFoundException | UnrecoverableKeyException | KeyStoreException | NoSuchAlgorithmException |
                                  NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e1) {
-                            closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                            closeClient();
                             e1.printStackTrace();
                         }
 
 
                     }
                 } catch (IOException e){
-                    closeClient(cSocket, outStream, inStream, outBuff, inBuff);
+                    closeClient();
                 }
             }
 
@@ -432,31 +448,27 @@ public class Tintolmarket {
 
 
     /**
-     * Closes the client 
-     * @param cSocket Client socket
-     * @param outStream output stream
-     * @param inStream input stream
-     * @param outBuff output buffer
-     * @param inBuff input bufer
+     * Closes the client. Can be used when unexpected exceptions occur. 
+     * 
      */
-    public void closeClient(Socket cSocket, ObjectOutputStream outStream, ObjectInputStream inStream, BufferedOutputStream outBuff, BufferedInputStream inBuff){
+    public void closeClient(){
         try {
 
-            if(inStream != null) {
-                inStream.close();
+            if(this.inStream != null) {
+                this.inStream.close();
             }
-            if(outStream != null) {
-                outStream.close();
+            if(this.outStream != null) {
+                this.outStream.close();
             }
-            if(outBuff != null) {
-                outBuff.close();
+            if(this.outBuff != null) {
+                this.outBuff.close();
             }
-            if(cSocket != null) {
-                cSocket.close();
+            if(this.cSocket != null) {
+                this.cSocket.close();
             }
             
-            if(inBuff != null) {
-                inBuff.close();
+            if(this.inBuff != null) {
+                this.inBuff.close();
             }
         } catch(IOException e) {
             e.printStackTrace();
@@ -464,7 +476,7 @@ public class Tintolmarket {
     }
 
     /**
-     * Prints the menu wich contains the options for the client to use
+     * Prints the menu which contains the options for the client to use
      */
     public void printMenu(){
         System.out.println("Choose an action to perform: ");

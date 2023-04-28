@@ -13,17 +13,14 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import javax.crypto.spec.PBEKeySpec;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.KeySpec;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
@@ -35,12 +32,9 @@ import java.util.HashMap;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
@@ -52,7 +46,6 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -93,6 +86,9 @@ public class TintolmarketServer {
 
     }
 
+    /** 
+     * @param args
+     */
     public static void main(String[] args) {
         try {
 
@@ -115,15 +111,13 @@ public class TintolmarketServer {
                 //Create TintolmarketServer object and load any previous data
                 TintolmarketServer server = new TintolmarketServer(sSocket, passwordCifra);
                 server.loadData();
-                
-                server.writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
             
                 server.startServer();
             } else {
                 System.out.println("Introduced the wrong number of arguments! Be sure to read the readMe on how to execute.");
             }
 
-        } catch (IOException e) {     
+        } catch (IOException e) {              
             System.err.println(e.getMessage());
             System.exit(-1);
         }
@@ -150,13 +144,15 @@ public class TintolmarketServer {
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
+            closeSever();
             e.printStackTrace();
         }
 
     }
 
     /**
-     * Loads the data from a previous iteration of the program onto the respective objects
+     * Loads the data from a previous iteration of the program onto the respective objects. In case of the users and usersSaldo, must first
+     * decrypt the data.
      */
     public void loadData(){
             try {
@@ -196,7 +192,6 @@ public class TintolmarketServer {
                     String msgWithoutWhiteSpaces = decryptedMsg.replaceAll("\\s","");
 
                     // Load data from message
-                    System.out.println(msgWithoutWhiteSpaces);
                     String[] data = msgWithoutWhiteSpaces.split(":");
                     usernames.add(data[0]);
                     userList.put(data[0], data[1]);
@@ -206,9 +201,41 @@ public class TintolmarketServer {
 
                 //Read usersSaldo
                 reader = new BufferedReader(new FileReader("..//serverBase//usersSaldo.txt"));
+                readerParams = new BufferedReader(new FileReader("..//serverBase//paramsSaldo.txt"));
                 while((line = reader.readLine()) != null){
-                    String[] data = line.split(" ");
+
+                    // Get params
+                    String lineParams = readerParams.readLine();
+
+                    // Decode bytes
+                    byte[] byteMsg = Base64.getDecoder().decode(line);
+                    byte[] byteParams = Base64.getDecoder().decode(lineParams);
+
+                    // Initialize params
+                    AlgorithmParameters p = AlgorithmParameters.getInstance("PBEWithHmacSHA256AndAES_128");
+                    p.init(byteParams);
+
+                    // Get key
+                    byte[] salt = { (byte) 0xc9, (byte) 0x36, (byte) 0x78, (byte) 0x99, (byte) 0x52, (byte) 0x3e, (byte) 0xea, (byte) 0xf2 };
+                    PBEKeySpec keySpec = new PBEKeySpec(passwordCipher.toCharArray(), salt, 20); // pass, salt, iterations
+                    SecretKeyFactory kf = SecretKeyFactory.getInstance("PBEWithHmacSHA256AndAES_128");
+                    SecretKey key = kf.generateSecret(keySpec);
+
+                    // Decrypt message bytes
+                    Cipher d = Cipher.getInstance("PBEWithHmacSHA256AndAES_128");
+                    d.init(Cipher.DECRYPT_MODE, key, p);
+                    byte [] bytesDecMessage = d.doFinal(byteMsg);
+
+                    // Change message back from byte[] to a string
+                    String decryptedMsg = new String(bytesDecMessage, "UTF-8");
+
+                    // Delete white spaces
+                    String msgWithoutWhiteSpaces = decryptedMsg.replaceAll("\\s","");
+
+                    // Load data from message
+                    String[] data = msgWithoutWhiteSpaces.split(":");
                     userSaldo.put(data[0], Integer.valueOf(data[1]));
+
                 }
                 reader.close();
 
@@ -240,18 +267,43 @@ public class TintolmarketServer {
                 reader.close();
 
             } catch ( IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | 
-                      InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException | InvalidKeySpecException e) {
+                      InvalidAlgorithmParameterException | IllegalBlockSizeException | InvalidKeySpecException e) {
+                closeSever();
                 e.printStackTrace();
-            }  
+            }  catch ( BadPaddingException e) {
+                System.out.println("Introduced the wrong cipher-password. Be sure to use the same password as last time you executed the server.");
+                closeSever();
+            }
     }
 
     /**
-     * Each ServerThread is responsible for a single client and all the operations related to that client, extends class Thread 
+     * Closes the server. Can be used when unexpected exceptions occur.
+     */
+    private void closeSever() {
+        try {
+            if(writer != null) {
+                writer.close();
+            }
+
+            if(writer2 != null) {
+                writer.close();
+            }
+
+            if(sSocket != null) {
+                sSocket.close();
+            }
+        } catch (IOException e) {
+        e.printStackTrace();
+        }
+    }
+
+    /**
+     * Server Thread. Each SSLSimpleServer is responsible for a single client and all the operations related to that client, extends class Thread.
      */
     class SSLSimpleServer extends Thread {
-        private Socket socket = null; //Might have ti be an sslSocket
-        private String username; //Identificador da thread.
-        private ObjectOutputStream outStream; //outStream e inStream passados para variaveis globais de serverThread para podermos criar metodos como read e talk
+        private Socket socket = null;
+        private String username;
+        private ObjectOutputStream outStream;
         private ObjectInputStream inStream;
         private BufferedInputStream inBuff;
         private BufferedOutputStream outBuff;
@@ -278,21 +330,26 @@ public class TintolmarketServer {
 
 		}
 
+        // Runs the server thread.
         public void run() {
             try {
 
+                // Call for user authentication immediatly after connection.
                 authenticateUser();
                 
-                //Listening for a message 
+                // Listening for a message 
                 String messageFromClient;
                 while(socket.isConnected()) {
 
                     try {
 
+                        // Listens for the command message.
                         messageFromClient = (String)inStream.readObject();
-                        String[] splitMessage = messageFromClient.split(" ", 0); //Partir a mensagem do utilizador. Em splitMessage[0] estara sempre o commando a executar
+                        String[] splitMessage = messageFromClient.split(" ", 0);
 
                         switch(splitMessage[0]) {
+
+                            // Handles add command.
                             case "add":
                             case "a":
                                 if(splitMessage.length == 3) {
@@ -305,6 +362,7 @@ public class TintolmarketServer {
                                 }
                                 break;          
 
+                            // Handles sell command.
                             case "sell":
                             case "s":
                                 if(splitMessage.length == 4) {
@@ -317,6 +375,7 @@ public class TintolmarketServer {
                                 }
                                 break;   
 
+                            // Handles view command.
                             case "view":
                             case "v":
                                 if(splitMessage.length == 2) {
@@ -330,6 +389,7 @@ public class TintolmarketServer {
                                 }                              
                                 break;
 
+                            // Handles buy command.
                             case "buy":
                             case "b":
                                 if(splitMessage.length == 4) {
@@ -342,6 +402,7 @@ public class TintolmarketServer {
                                 }
                                 break;
 
+                            // Handles wallet command.
                             case "wallet":
                             case "w":
                                 if(splitMessage.length == 1) {
@@ -355,6 +416,7 @@ public class TintolmarketServer {
                                 }  
                                 break;
 
+                            // Handles classify command.
                             case "classify":
                             case "c":
                                 if(splitMessage.length == 3) {
@@ -367,6 +429,7 @@ public class TintolmarketServer {
                                 }
                                 break;
 
+                            // Handles talk command.
                             case "talk":
                             case "t":
                                 if(splitMessage.length == 2) {
@@ -380,6 +443,7 @@ public class TintolmarketServer {
                                 }
                                 break;
 
+                            // Handles read command.
                             case "read":
                             case "r":
                                 if(splitMessage.length == 1) {
@@ -393,15 +457,12 @@ public class TintolmarketServer {
                                 }
                                 break;
 
-                            
-
+                            // Handles cases where user introduced a non accepted command.
                             default:
                                 outStream.writeObject("Please introduce a valid command.");
                                 outStream.flush();
 
                         }
-
-
 
                     } catch (ClassNotFoundException e1) {
                         closeEverything(socket, inStream, outStream);
@@ -417,26 +478,34 @@ public class TintolmarketServer {
 
         }
 
+        /**
+         * Handles the processing of user authentication with the server.
+         * When the user sends his username to the server, the server will send a nonce back to the user.
+         * The user will responde with the original nonce, the encrypted nonce and their certificate.
+         * After this the server will verify the authenticity of the user by decrypting the nonce with the users private key.
+         * Server sends back authentication confirmation.
+         * 
+         */
         public void authenticateUser() {
             try {
 
-                // Recieving the username from the user
+                // Recieving the username from the user.
                 String user = (String)inStream.readObject();
 
-                // Generating a nonce and sending it to the user
+                // Generating a nonce and sending it to the user.
                 byte[] nonce = new byte[8];
                 new SecureRandom().nextBytes(nonce);
                 outBuff.write(nonce, 0, 8);
                 outBuff.flush();
 
-                // Verifying if the user is already registered
+                // Verifying if the user is already registered.
                 if(!usernames.contains(user)) {
 
-                    //Send isRegistered flag
+                    // Send isRegistered flag.
                     outStream.writeObject(false);
                     outStream.flush();
 
-                    // Receive original nonce and verify if it matches generated nonce
+                    // Receive original nonce and verify if it matches generated nonce.
                     byte[] originalNonce = new byte[8];
                     inBuff.read(originalNonce);
                     if(!Arrays.equals(originalNonce, nonce)){
@@ -447,24 +516,24 @@ public class TintolmarketServer {
                         return;
                     };
 
-                    // Receive encrypted nonce size and encrypted nonce 
+                    // Receive encrypted nonce size and encrypted nonce.
                     int encryptedNonceLength = (int)inStream.readObject();
                     byte[] encryptedNonce =  new byte[encryptedNonceLength];
                     inBuff.read(encryptedNonce);
 
-                    // Receive client certificate chain
+                    // Receive client certificate chain.
                     Certificate[] clientCer = (Certificate[])inStream.readObject();
 
-                    // Get the public key from the certificate
+                    // Get the public key from the certificate.
                     X509Certificate clientCert = (X509Certificate) clientCer[0];
                     PublicKey publicKey = clientCert.getPublicKey();
 
-                    // Verify with the public key if the encrypted nonce is correct
+                    // Verify with the public key if the encrypted nonce is correct.
                     Cipher cipher = Cipher.getInstance("RSA");
                     cipher.init(Cipher.DECRYPT_MODE, publicKey);
                     byte[] decryptedNonce = cipher.doFinal(encryptedNonce);
 
-                    // Send error message if decryption failed
+                    // Send error message if decryption failed.
                     if (!Arrays.equals(decryptedNonce, nonce)) {
                         outStream.writeObject("Authentication failed, encrypted nonce doesn't match nonce, disconnecting!");
                         outStream.flush();
@@ -473,7 +542,7 @@ public class TintolmarketServer {
                         return;
                     };
                     
-                    // If every condition is met, register client
+                    // If every condition is met, register client.
                     this.username = user;
                     usernames.add(username);
                     userList.put(username, "..\\serverBase\\cert" + username + ".cer");
@@ -485,7 +554,7 @@ public class TintolmarketServer {
                     writeUsers();
                     writeSaldo();
 
-                    // Save user certificate in server base
+                    // Save user certificate in server base.
                     FileOutputStream fout = new FileOutputStream("..\\serverBase\\cert" + username + ".cer");
                     CertificateFactory cf = CertificateFactory.getInstance("X.509");
                     Certificate cert = cf.generateCertificate(new ByteArrayInputStream(clientCer[0].getEncoded()));
@@ -494,30 +563,30 @@ public class TintolmarketServer {
                     
                 } else {
 
-                    //Send isRegistered flag
+                    // Send isRegistered flag.
                     outStream.writeObject(true);
                     outStream.flush();
 
-                    // Receive encrypted nonce size and encrypted nonce 
+                    // Receive encrypted nonce size and encrypted nonce.
                     int encryptedNonceLength = (int)inStream.readObject();
                     byte[] encryptedNonce =  new byte[encryptedNonceLength];
                     inBuff.read(encryptedNonce);
 
-                    // Get client certificate chain
+                    // Get client certificate chain.
                     String certificatePath = userList.get(user);     
                     FileInputStream inputStream = new FileInputStream(certificatePath);
                     CertificateFactory cf = CertificateFactory.getInstance("X.509");    
                     X509Certificate certificate = (X509Certificate) cf.generateCertificate(inputStream);
                     
-                    // Get public key from certificate
+                    // Get public key from certificate.
                     PublicKey publicKey = certificate.getPublicKey();
 
-                    // Verify with the public key if the encrypted nonce is correct
+                    // Verify with the public key if the encrypted nonce is correct.
                     Cipher cipher = Cipher.getInstance("RSA");
                     cipher.init(Cipher.DECRYPT_MODE, publicKey);
                     byte[] decryptedNonce = cipher.doFinal(encryptedNonce);
 
-                    // Send error message if decryption failed
+                    // Send error message if decryption failed.
                     if (!Arrays.equals(decryptedNonce, nonce)) {
                         outStream.writeObject("Authentication failed, encrypted nonce doesn't match nonce, disconnecting!");
                         outStream.flush();
@@ -526,7 +595,7 @@ public class TintolmarketServer {
                         return;
                     };
 
-                    // If every condition is met, log in the client
+                    // If every condition is met, log in the client.
                     this.username = user;
                     users.add(this);
                     System.out.println("User " + username + " logged in successful."); 
@@ -549,49 +618,110 @@ public class TintolmarketServer {
 
 
         /**
-         * Writes user related data onto a txt file 
+         * Writes user related data onto a txt file. Encrypts the data using AES 128 and the passwordCipher.
+         * 
          */
         public void writeUsers() {
             try {
 
+                // Create BufferedWriter objects for the users and params files.
                 writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
                 writer2 = new BufferedWriter(new FileWriter("..//serverBase//params.txt"));
 
                 for(String tag : usernames) {
 
-                    // Create string
+                    // Create string.
                     String toWrite = tag + ":" + userList.get(tag) + "\n";
 
-                    // Generate key based on password
+                    // Generate key based on password.
                     byte[] salt = { (byte) 0xc9, (byte) 0x36, (byte) 0x78, (byte) 0x99, (byte) 0x52, (byte) 0x3e, (byte) 0xea, (byte) 0xf2 };
-                    PBEKeySpec keySpec = new PBEKeySpec(passwordCipher.toCharArray(), salt, 20); // pass, salt, iterations
+                    PBEKeySpec keySpec = new PBEKeySpec(passwordCipher.toCharArray(), salt, 20);
                     SecretKeyFactory kf = SecretKeyFactory.getInstance("PBEWithHmacSHA256AndAES_128");
                     SecretKey key = kf.generateSecret(keySpec);
 
-                    // Change message to bytes
+                    // Change message to bytes.
                     byte[] byteMsg = toWrite.getBytes("UTF-8");
 
-                    // Generate cipher and encrypt string
+                    // Generate cipher and encrypt string.
                     Cipher c = Cipher.getInstance("PBEWithHmacSHA256AndAES_128");
                     c.init(Cipher.ENCRYPT_MODE, key);
                     byte[] byteEncryptedMsg = c.doFinal(byteMsg);
-                    byte[] params = c.getParameters().getEncoded(); // we need to get the various parameters (p.ex., IV)
+                    byte[] params = c.getParameters().getEncoded();
                     
-                    // Encode params bytes to string
+                    // Encode params bytes to string.
                     String encodedParams = Base64.getEncoder().encodeToString(params);
 
-                    // Encode message bytes to string
+                    // Encode message bytes to string.
                     String encodedMsg = Base64.getEncoder().encodeToString(byteEncryptedMsg);
 
-                    // Write
+                    // Write.
                     writer.write(encodedMsg + "\n");
                     writer.flush();
                     writer2.write(encodedParams + "\n");
                     writer2.flush();
 
+                }
+
+                // Close both writers.
+                writer.close();
+                writer2.close();
+
+            } catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
+                     IllegalBlockSizeException | BadPaddingException | InvalidKeySpecException e1) {
+                e1.printStackTrace();
+            }
+        }  
+
+        /**
+        * Writes the users wallet onto a txt file. Encrypts the data using AES 128 and the passwordCipher.
+        *
+        */
+        public void writeSaldo() {
+
+            try {
+
+                // Create BufferedWriter objects for the userSaldos and paramsSaldo files.
+                writer = new BufferedWriter(new FileWriter("..//serverBase//usersSaldo.txt"));
+                writer2 = new BufferedWriter(new FileWriter("..//serverBase//paramsSaldo.txt"));
+
+                for(String tag : usernames) {
+
+                    // Create string.
+                    String toWrite = tag + ":" + userSaldo.get(tag) +"\n";
+
+                    // Generate key based on password.
+                    byte[] salt = { (byte) 0xc9, (byte) 0x36, (byte) 0x78, (byte) 0x99, (byte) 0x52, (byte) 0x3e, (byte) 0xea, (byte) 0xf2 };
+                    PBEKeySpec keySpec = new PBEKeySpec(passwordCipher.toCharArray(), salt, 20);
+                    SecretKeyFactory kf = SecretKeyFactory.getInstance("PBEWithHmacSHA256AndAES_128");
+                    SecretKey key = kf.generateSecret(keySpec);
+
+                    // Change message to bytes.
+                    byte[] byteMsg = toWrite.getBytes("UTF-8");
+
+                    // Generate cipher and encrypt string.
+                    Cipher c = Cipher.getInstance("PBEWithHmacSHA256AndAES_128");
+                    c.init(Cipher.ENCRYPT_MODE, key);
+                    byte[] byteEncryptedMsg = c.doFinal(byteMsg);
+                    byte[] params = c.getParameters().getEncoded();
+                    
+                    // Encode params bytes to string.
+                    String encodedParams = Base64.getEncoder().encodeToString(params);
+
+                    // Encode message bytes to string.
+                    String encodedMsg = Base64.getEncoder().encodeToString(byteEncryptedMsg);
+
+                    // Write.
+                    writer.write(encodedMsg + "\n");
+                    writer.flush();
+                    writer2.write(encodedParams + "\n");
+                    writer2.flush();
 
                 }
+
+                // Close both writers.
                 writer.close();
+                writer2.close();
+
             } catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
                      IllegalBlockSizeException | BadPaddingException | InvalidKeySpecException e1) {
                 e1.printStackTrace();
@@ -599,44 +729,41 @@ public class TintolmarketServer {
         }
 
         /**
-         * Writes inbox related data onto a txt file 
+         * Writes inbox related data onto a txt file.
          */
         public void writeInbox() {
             try {
+
+                // Create BufferedWriter objects for the inbox files.
                 writer = new BufferedWriter(new FileWriter("..//serverBase//inbox.txt"));
+
                 for(String message : inbox) {
+
+                    // Write.
                     writer.write(message + "\n");
                     writer.flush();
                 }
+
+                // Close writer.
                 writer.close();
+
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
         }
 
         /**
-         * Writes the users wallet onto a txt file
-         */
-        public void writeSaldo() {
-            try {
-                writer = new BufferedWriter(new FileWriter("..//serverBase//usersSaldo.txt"));
-                for(String tag : usernames) {
-                    writer.write(tag + " " + userSaldo.get(tag) +"\n");
-                    writer.flush();
-                }
-                writer.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-        }
-
-        /**
-         * Writes current wines in the store and witch user is selling witch wine onto a txt file
+         * Writes current wines in the store and which user is selling which wine onto a txt file.
          */
         public void writeWine() {
             try {
+
+                // Create BufferedWriter objects for the inbox files.
                 writer = new BufferedWriter(new FileWriter("..//serverBase//wines.txt"));
+
                 for(TintolmarketWine wine : wineList) {
+
+                    // Write.
                     writer.write(wine.getWinename() + " " + wine.getPath() + " " + wine.getListofSellers().size() + " " + wine.getClassification() + "\n");
                     writer.flush();
                     if(wine.getListofSellers().size() > 0) {
@@ -647,7 +774,10 @@ public class TintolmarketServer {
                     }
 
                 }
+
+                // Close writer.
                 writer.close();
+
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
@@ -682,6 +812,7 @@ public class TintolmarketServer {
          * @param username
          */
         public void read(String username) {
+            
             boolean hadMessage = false;
             ArrayList<String> toDelete = new ArrayList<>();
 
@@ -873,7 +1004,7 @@ public class TintolmarketServer {
                     outStream.flush();
                     outStream.writeObject("start");
                     outStream.flush();
-                    String[] img = path.split("//"); //(..//serverbase//nome)
+                    String[] img = path.split("//");
                     outStream.writeObject(img[2]);
                     outStream.flush();
 
