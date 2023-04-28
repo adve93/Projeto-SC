@@ -417,6 +417,8 @@ public class TintolmarketServer {
                             case "s":
                                 if(splitMessage.length == 4) {
                                     sell(splitMessage[1], Integer.valueOf(splitMessage[2]),  Integer.valueOf(splitMessage[3]));
+                                    transaction tr = new transaction(splitMessage[1], Integer.valueOf(splitMessage[3]),Integer.valueOf(splitMessage[2]), this.username, transactionType.SELL);
+                                    blockchain.addTransaction(tr);
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("sell failed due to wrong number of parameters. Be sure to use sell 'wine' 'value' 'quantity'.");
@@ -444,6 +446,8 @@ public class TintolmarketServer {
                             case "b":
                                 if(splitMessage.length == 4) {
                                     buy(splitMessage[1], splitMessage[2], Integer.valueOf(splitMessage[3]));
+                                    transaction tr = new transaction(splitMessage[1], Integer.valueOf(splitMessage[3]), wineList.get(getIndexOfWine(splitMessage[1])).getValueOfWineSoldBySeller(splitMessage[2]), this.username, transactionType.BUY);
+                                    blockchain.addTransaction(tr);
                                 } else {
                                     System.out.println(username + " introduced the wrong number of parameters when calling a function.");
                                     outStream.writeObject("buy failed due to wrong number of parameters. Be sure to use buy 'wine' 'seller' 'quantity'.");
@@ -493,12 +497,7 @@ public class TintolmarketServer {
                                 }
                                 break;
 
-                            case "list":
-                            case "l":
-                                outStream.writeObject(voidReadBlockChain());
-                                outStream.writeObject("\n");
-                                outStream.flush();
-                            break;  
+                            
 
                             // Handles read command.
                             case "read":
@@ -513,6 +512,13 @@ public class TintolmarketServer {
                                     outStream.flush();
                                 }
                                 break;
+
+                            case "list":
+                            case "l":
+                                    outStream.writeObject(voidReadBlockChain());
+                                    outStream.writeObject("\n");
+                                    outStream.flush();
+                                break;  
 
                             // Handles cases where user introduced a non accepted command.
                             default:

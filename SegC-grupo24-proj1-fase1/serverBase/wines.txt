@@ -1,2 +1,1 @@
-tinto ..//serverBase//awc-min.jpg 1 0
-Afonso 4 6
+tinto ..//serverBase//awc-min.jpg 0 0
