@@ -1,1 +1,0 @@
-Afonso:..\serverBase\certAfonso.cer

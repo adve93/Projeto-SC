@@ -11,13 +11,19 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.net.ServerSocket;
+import javax.crypto.spec.PBEKeySpec;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
+import java.security.AlgorithmParameters;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
@@ -29,7 +35,12 @@ import java.util.HashMap;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
@@ -58,15 +69,17 @@ public class TintolmarketServer {
     private ArrayList<String> usernames;
     private SSLServerSocket sSocket;
     private BufferedWriter writer;
+    private BufferedWriter writer2;
     private ArrayList<TintolmarketWine> wineList;
     private ArrayList<String> inbox;
     private ArrayList<SSLSimpleServer> users;
+    private String passwordCipher;
 
     /**
      * TintolmarketServer constructor
      * @param sSocket The server socket
      */
-    public TintolmarketServer(SSLServerSocket sSocket) {
+    public TintolmarketServer(SSLServerSocket sSocket, String passwordCipher) {
         this.sSocket = sSocket;
         this.userList = new HashMap<String,String>();
         this.userSaldo = new HashMap<String,Integer>();
@@ -75,6 +88,8 @@ public class TintolmarketServer {
         this.users = new ArrayList<>();
         this.usernames = new ArrayList<>();
         this.writer = null;
+        this.writer2 = null;
+        this.passwordCipher = passwordCipher;
 
     }
 
@@ -98,10 +113,9 @@ public class TintolmarketServer {
                 sSocket = (SSLServerSocket) ssf.createServerSocket(port);
 
                 //Create TintolmarketServer object and load any previous data
-                TintolmarketServer server = new TintolmarketServer(sSocket);
+                TintolmarketServer server = new TintolmarketServer(sSocket, passwordCifra);
                 server.loadData();
                 
-                //Write data about every user that has already connected to the server
                 server.writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
             
                 server.startServer();
@@ -110,7 +124,7 @@ public class TintolmarketServer {
             }
 
         } catch (IOException e) {     
-            System.err.println(e.getMessage()); //TO-DO HANDLE EXCEPTIONS
+            System.err.println(e.getMessage());
             System.exit(-1);
         }
 	}
@@ -146,15 +160,51 @@ public class TintolmarketServer {
      */
     public void loadData(){
             try {
+
+                //Read users
                 BufferedReader reader = new BufferedReader(new FileReader("..//serverBase//users.txt"));
+                BufferedReader readerParams = new BufferedReader(new FileReader("..//serverBase//params.txt"));
                 String line;
                 while((line = reader.readLine()) != null){
-                    String[] data = line.split(":");
+                    
+                    // Get params
+                    String lineParams = readerParams.readLine();
+
+                    // Decode bytes
+                    byte[] byteMsg = Base64.getDecoder().decode(line);
+                    byte[] byteParams = Base64.getDecoder().decode(lineParams);
+
+                    // Initialize params
+                    AlgorithmParameters p = AlgorithmParameters.getInstance("PBEWithHmacSHA256AndAES_128");
+                    p.init(byteParams);
+
+                    // Get key
+                    byte[] salt = { (byte) 0xc9, (byte) 0x36, (byte) 0x78, (byte) 0x99, (byte) 0x52, (byte) 0x3e, (byte) 0xea, (byte) 0xf2 };
+                    PBEKeySpec keySpec = new PBEKeySpec(passwordCipher.toCharArray(), salt, 20); // pass, salt, iterations
+                    SecretKeyFactory kf = SecretKeyFactory.getInstance("PBEWithHmacSHA256AndAES_128");
+                    SecretKey key = kf.generateSecret(keySpec);
+
+                    // Decrypt message bytes
+                    Cipher d = Cipher.getInstance("PBEWithHmacSHA256AndAES_128");
+                    d.init(Cipher.DECRYPT_MODE, key, p);
+                    byte [] bytesDecMessage = d.doFinal(byteMsg);
+
+                    // Change message back from byte[] to a string
+                    String decryptedMsg = new String(bytesDecMessage, "UTF-8");
+
+                    // Delete white spaces
+                    String msgWithoutWhiteSpaces = decryptedMsg.replaceAll("\\s","");
+
+                    // Load data from message
+                    System.out.println(msgWithoutWhiteSpaces);
+                    String[] data = msgWithoutWhiteSpaces.split(":");
                     usernames.add(data[0]);
                     userList.put(data[0], data[1]);
                 }
                 reader.close();
+                readerParams.close();
 
+                //Read usersSaldo
                 reader = new BufferedReader(new FileReader("..//serverBase//usersSaldo.txt"));
                 while((line = reader.readLine()) != null){
                     String[] data = line.split(" ");
@@ -162,6 +212,7 @@ public class TintolmarketServer {
                 }
                 reader.close();
 
+                //Read wines
                 reader = new BufferedReader(new FileReader("..//serverBase//wines.txt"));
                 while((line = reader.readLine()) != null){
                     String[] data = line.split(" ");
@@ -180,6 +231,7 @@ public class TintolmarketServer {
                 }
                 reader.close();
 
+                //Read inbox
                 reader = new BufferedReader(new FileReader("..//serverBase//inbox.txt"));
                 while((line = reader.readLine()) != null){
                     inbox.add(line);
@@ -187,11 +239,10 @@ public class TintolmarketServer {
                 }
                 reader.close();
 
-            } catch (FileNotFoundException e) {
+            } catch ( IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | 
+                      InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException | InvalidKeySpecException e) {
                 e.printStackTrace();
-            } catch (IOException e){
-                e.printStackTrace();
-            }
+            }  
     }
 
     /**
@@ -502,13 +553,47 @@ public class TintolmarketServer {
          */
         public void writeUsers() {
             try {
+
                 writer = new BufferedWriter(new FileWriter("..//serverBase//users.txt"));
+                writer2 = new BufferedWriter(new FileWriter("..//serverBase//params.txt"));
+
                 for(String tag : usernames) {
-                    writer.write(tag + ":" + userList.get(tag) + "\n");
+
+                    // Create string
+                    String toWrite = tag + ":" + userList.get(tag) + "\n";
+
+                    // Generate key based on password
+                    byte[] salt = { (byte) 0xc9, (byte) 0x36, (byte) 0x78, (byte) 0x99, (byte) 0x52, (byte) 0x3e, (byte) 0xea, (byte) 0xf2 };
+                    PBEKeySpec keySpec = new PBEKeySpec(passwordCipher.toCharArray(), salt, 20); // pass, salt, iterations
+                    SecretKeyFactory kf = SecretKeyFactory.getInstance("PBEWithHmacSHA256AndAES_128");
+                    SecretKey key = kf.generateSecret(keySpec);
+
+                    // Change message to bytes
+                    byte[] byteMsg = toWrite.getBytes("UTF-8");
+
+                    // Generate cipher and encrypt string
+                    Cipher c = Cipher.getInstance("PBEWithHmacSHA256AndAES_128");
+                    c.init(Cipher.ENCRYPT_MODE, key);
+                    byte[] byteEncryptedMsg = c.doFinal(byteMsg);
+                    byte[] params = c.getParameters().getEncoded(); // we need to get the various parameters (p.ex., IV)
+                    
+                    // Encode params bytes to string
+                    String encodedParams = Base64.getEncoder().encodeToString(params);
+
+                    // Encode message bytes to string
+                    String encodedMsg = Base64.getEncoder().encodeToString(byteEncryptedMsg);
+
+                    // Write
+                    writer.write(encodedMsg + "\n");
                     writer.flush();
+                    writer2.write(encodedParams + "\n");
+                    writer2.flush();
+
+
                 }
                 writer.close();
-            } catch (IOException e1) {
+            } catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
+                     IllegalBlockSizeException | BadPaddingException | InvalidKeySpecException e1) {
                 e1.printStackTrace();
             }
         }
