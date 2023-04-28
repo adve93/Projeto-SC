@@ -1,5 +1,11 @@
-public class transaction {
+import java.io.Serializable;
+
+/**
+ * Object that represents a transaction to be stored in a block of a blockchain
+ */
+public class transaction implements Serializable{
     
+    //Attributes 
     private String wineString;
 
     private int unites;
@@ -8,11 +14,18 @@ public class transaction {
 
     private String ownerId;
 
-    private String signatureString;
+    private transactionType transactionType;
 
-    private transaction transactionType;
-
-    public transaction(String wineString, int unites, int wineValue, String ownerId, transaction transactionType){
+    /**
+     * Main constructor
+     * 
+     * @param wineString the name of the wine it was interacted with
+     * @param unites the number of units interacted with
+     * @param wineValue the value of a single unit of the wine it was interacted with
+     * @param ownerId the id of the user that made de sell or buy operation
+     * @param transactionType the type of operation realized
+     */
+    public transaction(String wineString, int unites, int wineValue, String ownerId, transactionType transactionType){
         this.wineString = wineString;
         this.unites = unites;
         this.wineValue = wineValue;
@@ -20,37 +33,54 @@ public class transaction {
         this.transactionType = transactionType;
     }
 
-
+    /**
+     * 
+     * @return The name of the wine
+     */
     public String getWineString(){
         return this.wineString;
     }
 
+    /**
+     * 
+     * @return The units interacted with
+     */
     public int getUnites(){
         return this.unites;
     }
 
+    /**
+     * 
+     * @return The value of a single bottle
+     */
     public int getWineValue(){
         return this.wineValue;
     }
 
+    /**
+     * 
+     * @return The id of the user that made the operation
+     */
     public String getOwnerId(){
         return this.ownerId;
     }
 
-    public String getSignatureString(){
-        return this.signatureString;
-    }
-
-    public transaction getTransactionType(){
+    /**
+     * 
+     * @return The transaction type
+     */
+    public transactionType getTransactionType(){
         return this.transactionType;
     }
 
-    public void setSignature(String signatureString){
-        this.signatureString = signatureString;
+
+    @Override
+    public String toString(){
+        return "Transaction of type: " + transactionType + " --> " + " Name of Wine: " + wineString + " / Unites Manipulated: " + unites + " / Value of each Unit: " +
+        wineValue + " / ID of user that perform de transaction: " + ownerId;
+        
     }
 
+ 
 
-    public String getData() {
-        return wineString + "," + unites + "," + wineValue + "," + ownerId;
-    }
 }

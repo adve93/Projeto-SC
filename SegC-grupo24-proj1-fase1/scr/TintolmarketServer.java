@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -67,6 +68,7 @@ public class TintolmarketServer {
     private ArrayList<String> inbox;
     private ArrayList<SSLSimpleServer> users;
     private String passwordCipher;
+    private blockchain blockchain;
 
     /**
      * TintolmarketServer constructor
@@ -83,6 +85,7 @@ public class TintolmarketServer {
         this.writer = null;
         this.writer2 = null;
         this.passwordCipher = passwordCipher;
+        this.blockchain = new blockchain(5);
 
     }
 
@@ -127,6 +130,10 @@ public class TintolmarketServer {
      * Starts the server and awaits new clients to connect to it
      */
     public void startServer() {
+        loadBLKS();
+        blockchain.loadHashes();
+        if(blockchain.isChainValid()) System.out.println("Chain is valid");
+        else System.out.println("Chain is not valid");
 
         try {
 
@@ -275,6 +282,49 @@ public class TintolmarketServer {
                 closeSever();
             }
     }
+
+    private void loadBLKS(){
+        int i = 1;
+        while (true) {
+            File file = new File("block" + i + ".blk");
+            if (!file.exists()) {
+                break;
+            }
+            processBLK(i);
+            i++;
+        }
+    }
+    
+    
+
+    private void processBLK(int blkFile){
+        
+        try {
+            FileInputStream fis = new FileInputStream("block" + blkFile + ".blk");
+            ObjectInputStream ois = new ObjectInputStream(fis);
+
+            String previousHash = (String) ois.readObject(); //hash
+            int id = ois.readInt(); //id
+            int numTransactions = ois.readInt(); //nTransaction
+            List<transaction> transactions = new ArrayList<>(); //listOfTransactions
+            for (int i = 0; i < numTransactions; i++) {
+                transaction t = (transaction) ois.readObject();
+                transactions.add(t);
+            }
+            blockchain.uploadBlock(previousHash, id, transactions);
+            byte[] serverSignature = null;
+            if (ois.available() > 0) {
+                serverSignature = (byte[]) ois.readObject();
+                blockchain.getLatestBlock().setSignature(new String(serverSignature));
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        
+
+    }
+
+
 
     /**
      * Closes the server. Can be used when unexpected exceptions occur.
@@ -442,6 +492,13 @@ public class TintolmarketServer {
                                     outStream.flush();
                                 }
                                 break;
+
+                            case "list":
+                            case "l":
+                                outStream.writeObject(voidReadBlockChain());
+                                outStream.writeObject("\n");
+                                outStream.flush();
+                            break;  
 
                             // Handles read command.
                             case "read":
@@ -1180,6 +1237,16 @@ public class TintolmarketServer {
             }
             return -1;
         }
+
+        private String voidReadBlockChain(){
+            StringBuilder sb = new StringBuilder();
+            List<block> temp = blockchain.getListOBlocks();
+            for(block block: temp){
+                sb.append(block.readBlock() + "\n");
+            }
+            return sb.toString();
+        }
+
     } //End of server thread
 
 }

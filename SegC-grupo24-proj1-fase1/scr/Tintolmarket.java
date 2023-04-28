@@ -480,7 +480,7 @@ public class Tintolmarket {
      */
     public void printMenu(){
         System.out.println("Choose an action to perform: ");
-        System.out.println("add; sell; view; buy; wallet; classify; talk; read");
+        System.out.println("add; sell; view; buy; wallet; classify; talk; read; list");
         System.out.println("All actions can be called by using the first letter of the name.");
     }
 }

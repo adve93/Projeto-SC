@@ -1,0 +1,2 @@
+tinto ..//serverBase//awc-min.jpg 1 0
+Afonso 4 6

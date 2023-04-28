@@ -1,92 +1,113 @@
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.util.ArrayList;
+import java.util.List;
 
+/**
+ * Class that represents the blockchain itself and manages the blocks
+ */
 public class blockchain {
     
-    private ArrayList<block> blockchain = new ArrayList<>();
-    private int difficulty = 5;
-    private int sizeOfBlock = 5; //5 transactions for eachblock
-    private KeyPair keyPair;
+    //Attributes
+    private int blockSize;
+    private List<block> blockchain;
 
-
-    public blockchain() throws Exception{
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-        keyPairGenerator.initialize(2048);
-        this.keyPair = keyPairGenerator.generateKeyPair();
+    /**
+     * Main constructor
+     * @param blockSize the max number of transactions a block can have
+     */
+    public blockchain(int blockSize){
+        this.blockSize = blockSize;
+        this.blockchain = new ArrayList<>();
     }
 
-    public void addBlock(ArrayList<transaction> transactions) throws Exception {
 
-        block previousBlock = getPreviousBlock();
-
-        int id = blockchain.size();
-        long timeStamp = System.currentTimeMillis();
-        String previousHashString = previousBlock != null ? previousBlock.getHash() : "0000000000000000000000000000000000000000000000000000000000000000";
-
-        block block = new block(id, transactions, timeStamp, previousHashString);
-
-        block = mineBlock(block);
-
-        blockchain.add(block);
-
+    /**
+     * 
+     * @return the list of blocks 
+     */
+    public List<block> getListOBlocks(){
+        return this.blockchain;
     }
 
-    public boolean isValid() throws Exception{
-        for (int i = 0; i < blockchain.size(); i++) {
-            block  block = blockchain.get(i);
 
-            // Validate the block's signature
-            if (!block.isSignedBy(keyPair)) {
-                return false;
-            }
+    /**
+     * Uploads a block that was extracted from a blk file
+     * @param previousHash the hash of the previous block
+     * @param id the id of the block
+     * @param tr the list of transactions
+     */
+    public void uploadBlock(String previousHash, int id, List<transaction> tr){
+        blockchain.add(new block(id, tr, previousHash));
+    }
 
-            // Check the block's hash
-            if (!block.isValid()) {
-                return false;
-            }
+    /**
+     * Adds a new transaction to the block chain
+     * @param transaction the transaction to be added
+     */
+    public void addTransaction(transaction transaction) {
+        if (blockchain.isEmpty() || blockchain.get(blockchain.size() - 1).getListOfTransaction().size() == blockSize) {
+            // Create a new block if there are no blocks or the current block is full
+            String previousHash = blockchain.isEmpty() ? "00000000000000000000000000000000" : blockchain.get(blockchain.size() - 1).getHash();
+            block newBlock = new block(blockchain.size() + 1, new ArrayList<>(), previousHash);
+            blockchain.add(newBlock);
+        }
+        // Add the transaction to the latest block
+        blockchain.get(blockchain.size() - 1).addTransaction(transaction);
+        if (blockchain.get(blockchain.size() - 1).getListOfTransaction().size() == blockSize) {
+            // Sign the latest block if it is full
+            String signature = "server_signature"; // Replace with actual server signature
+            blockchain.get(blockchain.size() - 1).setSignature(signature);
+        }
+        blockchain.get(blockchain.size() - 1).writeToDisk();
+    }
 
-            // Check the chain of hashes
-            if (i > 0) {
+    /**
+     * 
+     * @return The last block on the blockchain
+     */
+    public block getLatestBlock() {
+        return blockchain.get(blockchain.size() - 1);
+    }
+
+    /**
+     * Checks if the chain is valid after loading it from the blk files
+     * @return a boolean saying if the chain is valid
+     */
+    public boolean isChainValid() {
+        for (int i = 0; i < blockchain.size() - 1; i++) {
+            if(i != blockchain.size() - 1){
+                block currentBlock = blockchain.get(i);
                 block previousBlock = blockchain.get(i - 1);
-                if (!block.getPreviousHash().equals(previousBlock.getHash())) {
+    
+                if (!currentBlock.getPreviousHash().equals(previousBlock.getHash())) {
                     return false;
                 }
-            }
+            } 
         }
-
         return true;
     }
 
+    /**
+     * Load the hashes from each block from their blks, this is used to verify if the blockchain is valid
+     */
+    public void loadHashes(){
+        for (int i = 0; i < blockchain.size() - 1; i++) {
+            if(i != blockchain.size() - 1){
+                block currentBlock = blockchain.get(i);
+                block nextBlock = blockchain.get(i+1);
 
-    private block mineBlock(block block) {
-        String target = new String(new char[difficulty]).replace('\0', '0');
+                currentBlock.setHash(nextBlock.getPreviousHash());
 
-        // Keep trying to find a nonce until the target is met
-        int nonce = 0;
-        while (!block.getHash().substring(0, difficulty).equals(target)) {
-            nonce++;
-            block.setSignature(null);
-            block.setHash(null);
-            block.setId(block.getId() + 1);
-            block.setTimestamp(System.currentTimeMillis());
-            block.setPreviousHash(getPreviousBlock().getHash());
-            block.setHash(block.calculateHash() + nonce);
+            } 
         }
-
-        // Sign the block with the server's private key
-        Signature signature = Signature.getInstance("SHA256withRSA");
-        signature.initSign(keyPair.getPrivate());
-        signature.update(block.getHash().getBytes());
-        byte[] signatureBytes = signature.sign();
-        String signatureString = new String(signatureBytes);
-        block.setSignature(signatureString);
-
-        return block;
     }
 
-    private block getPreviousBlock() {
-        return null;
-    }
 
+
+    @Override
+    public String toString() {
+        return "Blockchain{" +
+                "maxTransactionsPerBlock=" + blockSize +
+                ", blocks=" + blockchain +
+                '}';
+    }
 }
